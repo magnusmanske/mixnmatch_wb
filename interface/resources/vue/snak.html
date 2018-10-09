@@ -1,0 +1,151 @@
+<style>
+span.snak_description {
+	color:#999;
+	font-size:9pt;
+}
+div.snak_monolingualtext {
+	display:flex;
+}
+div.snak_monolingualtext_language {
+    min-width:2rem;
+    width:2rem;
+    background-color:#EEE;
+    padding-left:2px;
+}
+div.snak_monolingualtext_value {
+	padding-left:2px;
+}
+span.snak_contents {
+	display:flex;
+	flex-direction:column;
+}
+</style>
+
+<template id='snak-template'>
+<span class='snak' v-if='is_loaded'>
+	<span v-if='snak.datatype=="wikibase-item"'>
+		<span v-if='/^[PQ]\d+$/.test(snak.datavalue.value.id)'>
+			<wd-link :item='snak.datavalue.value.id'></wd-link>
+			<span v-if='typeof nodesc=="undefined"' class='snak_description'>
+				{{getDescription()}}
+			</span>
+		</span>
+		<span v-else>
+			&nbsp;
+		</span>
+	</span>
+	<span v-else-if='snak.datatype=="time"' class='snak_contents'>
+		<div>{{renderTime()}}</div>
+		<div v-if='snak.datavalue.value.calendarmodel!="http://www.wikidata.org/entity/Q1985727"'>
+			[<wd-link :item='snak.datavalue.value.calendarmodel.replace(/^.+\//,"")'></wd-link>]
+		</div>
+	</span>
+	<span v-else-if='snak.datatype=="string"' class='snak_contents'>
+		<div>
+			{{snak.datavalue.value}}
+		</div>
+	</span>
+	<span v-else-if='snak.datatype=="monolingualtext"' class='snak_contents'>
+		<div class='snak_monolingualtext'>
+			<div class='snak_monolingualtext_language'>{{snak.datavalue.value.language}}</div>
+			<div class='snak_monolingualtext_value'>{{snak.datavalue.value.text}}</div>
+		</div>
+	</span>
+	<span v-else-if='snak.datatype=="quantity"' class='snak_contents'>
+		<div>
+			<span>{{prettyNumber(snak.datavalue.value.amount*1)}}</span>
+			<span v-if='typeof snak.datavalue.value.unit!="undefined" && snak.datavalue.value.unit!="1"'>
+				[<wd-link :item='snak.datavalue.value.unit.replace(/^.+\//,"")'></wd-link>]
+			</span>
+		</div>
+	</span>
+	<span v-else-if='snak.datatype=="globe-coordinate"' class='snak_contents'>
+		<div>{{snak.datavalue.value.latitude}}/{{snak.datavalue.value.longitude}}</div>
+		<div>{{snak.datavalue.value.precision}}</div>
+		<div v-if='snak.datavalue.value.globe!="http://www.wikidata.org/entity/Q2"'>
+			[<wd-link :item='snak.datavalue.value.globe'></wd-link>]
+		</div>
+	</span>
+	<span v-else-if='snak.datatype=="external-id"' class='snak_contents'>
+		<span v-if='wd.getItem(snak.property).hasClaims("P1630")'>
+			<a :href='wd.getItem(snak.property).getFirstStringForProperty("P1630").replace(/\$1/,encodeURIComponent(snak.datavalue.value))' class='external' target='_blank'>
+				{{snak.datavalue.value.replace(/_/g,' ')}}
+			</a>
+		</span>
+		<span v-else>
+			{{snak.datavalue.value.replace(/_/g,' ')}}
+		</span>
+	</span>
+	<span v-else-if='snak.datatype=="commonsMedia"' class='snak_contents'>
+		<div>{{snak.datavalue.value}}</div>
+		<div>
+			<commons-thumbnail :filename='snak.datavalue.value' :width='128' :height='64' :key='snak.datavalue.value'></commons-thumbnail>
+		</div>
+	</span>
+	<span v-else-if='snak.datatype=="wikibase-property"' class='snak_contents'>
+		<wd-link :item='snak.datavalue.value.id'></wd-link>
+		<span v-if='typeof nodesc=="undefined"' class='snak_description'>
+			{{getDescription()}}
+		</span>
+	</span>
+	<span v-else-if='snak.datatype=="url"' class='snak_contents'>
+		<a :href='snak.datavalue.value' class='external' target='_blank'>
+			{{snak.datavalue.value.replace(/^https{0,1}:\/\//,'').replace(/\/.*$/,'')}}
+		</a>
+	</span>
+	<span v-else>
+		Unknown: {{snak}}
+	</span>
+</span>
+</template>
+
+
+<script>
+'use strict';
+
+Vue.component ( 'snak' , {
+	props : [ 'snak' , 'nodesc' ] ,
+	data : function () { return { is_loaded:false } } ,
+    created : function () {
+    	let me = this ;
+    	let to_load = [] ;
+    	if ( typeof me.snak.property != 'undefined' && typeof wd.getItem(me.snak.property) == 'undefined' ) to_load.push ( me.snak.property ) ;
+    	if ( me.snak.datatype == 'wikibase-item' ) to_load.push ( me.snak.datavalue.value.id ) ;
+		wd.getItemBatch ( to_load , function () {
+			me.is_loaded = true ;
+		} ) ;
+    } ,
+    updated : function () { tt.updateInterface(this.$el) ; } ,
+    mounted : function () { tt.updateInterface(this.$el) ; } ,
+    methods : {
+    	getDescription : function () {
+    		let i = wd.getItem(this.snak.datavalue.value.id) ;
+    		if ( typeof i == 'undefined' ) return '' ;
+    		return i.getDesc() ;
+    	} ,
+    	prettyNumber : function ( nStr ) {
+			nStr = ''+nStr;
+			let x = nStr.split('.');
+			let x1 = x[0];
+			let x2 = x.length > 1 ? '.' + x[1] : '';
+			let rgx = /(\d+)(\d{3})/;
+			while (rgx.test(x1)) {
+				x1 = x1.replace(rgx, '$1' + ',' + '$2');
+			}
+			return x1 + x2;
+		} ,
+    	renderTime : function () {
+    		let t = this.snak.datavalue.value.time ;
+    		let prec = this.snak.datavalue.value.precision ;
+    		let post = /^\-/.test(t) ? ' BCE' : '' ;
+    		t = t.replace ( /^[+-]/ , '' ) ;
+    		if ( prec < 9 ) t = t.replace ( /^(\d+)-.*$/ , '$1' ) + '[' + prec + ']' ;
+    		else if ( prec == 9 ) t = t.replace ( /^(\d+)-.*$/ , '$1' )  ;
+    		else if ( prec == 10 ) t = t.replace ( /^(\d+-\d+)-.*$/ , '$1' )  ;
+    		else if ( prec == 11 ) t = t.replace ( /^(\d+-\d+-\d+)T.*$/ , '$1' )  ;
+    		return t + post ;
+    	}
+    },
+	template : '#snak-template'
+} ) ;
+</script>

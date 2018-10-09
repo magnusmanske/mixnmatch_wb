@@ -1,0 +1,46 @@
+<style>
+div.card-header {
+    padding:5px;
+}
+</style>
+
+<template id='main-page-template'>
+	<div class='container'>
+		<tool-navbar>
+                <template slot='right'>
+                        <widar></widar>
+                </template>
+        </tool-navbar>
+        <p class='lead'>
+            This is an experimental version of Mix'n'match, using WikiBase.
+            <ul>
+                <li><a href='https://mixnmatch.wmflabs.org'>WikiBase installation</a></li>
+                <li><a href='https://mixnmatch-query.wmflabs.org'>SPARQL interface</a></li>
+                <li><a href='https://mixnmatch-qs.wmflabs.org'>QuickStatements interface</a></li>
+            </ul>
+            <i>Note:</i> Because OAuth does not work to allow Wikidata logins here,
+            I have to disable account creation to keep the spammers away.
+            If you want to play here, let me know your Wikidata user name
+            and email address, and I can set you up with a local account.
+        </p>
+<!--            <router-link class='btn btn-primary' to='/tab'>New tab</router-link>-->
+        <hr/>
+        <a href='https://github.com/magnusmanske/mixnmatch_wb' target='_blank' class='external'>Repo</a>
+	</div>
+</template>
+
+<script>
+'use strict';
+
+let MainPage = Vue.extend ( {
+        props : [] ,
+        data : function () { return {} } ,
+        created : function () {
+        } ,
+        updated : function () { tt.updateInterface(this.$el) ; } ,
+        mounted : function () { tt.updateInterface(this.$el) ; } ,
+        methods : {
+        },
+        template:'#main-page-template'
+    } ) ;
+</script>
