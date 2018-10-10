@@ -1,0 +1,85 @@
+<style>
+.sparql-results-row-number {
+	font-family:Courier;
+	font-size:12pt;
+	text-align:right;
+	width:4rem;
+}
+</style>
+
+<template id='sparql-results-template'>
+<div>
+	<div v-if='typeof json!="undefined"'>
+		<table class='table table-sm table-striped'>
+			<thead>
+				<tr>
+					<th v-for='(col,colid) in cols'>
+						<span v-if='col.numbering'>
+							#
+						</span>
+						<span v-else>
+							<span v-if='typeof col.header!="undefined"'>{{col.header}}</span>
+						</span>
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr v-for='id in current_ids'>
+					<td v-for='(col,colid) in cols' :class='getClassForColumnTD(col)'>
+						<div v-if='col.numbering'>
+							{{id+numbering_offset}}
+						</div>
+						<div v-else-if='typeof col.rlink!="undefined"'>
+							<router-link :to='col.rlink(json.results.bindings[id])'>
+								{{getColumnText(col,id)}}
+							</router-link>
+						</div>
+						<div v-else>
+							{{getColumnText(col,id)}}
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<div v-else>
+		<i>No results</i>
+	</div>
+</div>
+</template>
+
+
+<script>
+'use strict';
+
+Vue.component ( 'sparql-results' , {
+    props : [ 'json' , 'cols' , 'offset' ] ,
+    data : function () { return { start:0 , batch_size:50 , current_ids:[] , numbering_offset:1 } } ,
+    created : function () {
+        let me = this ;
+        if ( typeof me.offset != 'undefined' ) me.numbering_offset = me.offset ;
+        me.setCurrentIDs() ;
+    } ,
+    updated : function () { tt.updateInterface(this.$el) } ,
+    mounted : function () { tt.updateInterface(this.$el) } ,
+    methods : {
+    	getColumnText : function (col,id) {
+    		let me = this ;
+    		return col.text(me.json.results.bindings[id]) ;
+    	} ,
+    	getClassForColumnTD : function ( col ) {
+    		if ( col.numbering ) return 'sparql-results-row-number' ;
+    		return '' ;
+    	} ,
+    	setCurrentIDs : function () {
+    		let me = this ;
+    		let ids = [] ;
+    		for ( let i = 0 ; i < me.batch_size && i+me.start<me.json.results.bindings.length ; i++ ) {
+    			ids.push ( i ) ;
+    		}
+    		me.current_ids = ids ;
+    	}
+    } ,
+    template : '#sparql-results-template'
+} ) ;
+</script>

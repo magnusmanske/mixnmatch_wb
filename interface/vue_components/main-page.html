@@ -8,7 +8,6 @@ div.card-header {
 	<div class='container'>
 		<tool-navbar>
                 <template slot='right'>
-                        <widar></widar>
                 </template>
         </tool-navbar>
         <p class='lead'>
@@ -19,10 +18,12 @@ div.card-header {
                 <li><a href='https://mixnmatch-qs.wmflabs.org'>QuickStatements interface</a></li>
             </ul>
             <i>Note:</i> Because OAuth does not work to allow Wikidata logins here,
-            I have to disable account creation to keep the spammers away.
+            I have to disable account creation to keep the spammers away.<br/>
             If you want to play here, let me know your Wikidata user name
             and email address, and I can set you up with a local account.
         </p>
+        <sparql-results v-if='loaded' :json='json_catalogs' :cols='cols'>
+        </sparql-results>
 <!--            <router-link class='btn btn-primary' to='/tab'>New tab</router-link>-->
         <hr/>
         <a href='https://github.com/magnusmanske/mixnmatch_wb' target='_blank' class='external'>Repo</a>
@@ -34,8 +35,20 @@ div.card-header {
 
 let MainPage = Vue.extend ( {
         props : [] ,
-        data : function () { return {} } ,
+        data : function () { return { json_catalogs:{} , loaded:false , 
+            cols:[
+                {numbering:true},
+                {header:"Catalog",text:function(b){return b.qLabel.value},rlink:function(b){return '/catalog/'+b.q.value.replace(/^.+\//,'')}}
+                ] } } ,
         created : function () {
+            let me = this ;
+            me.loaded = false ;
+            me.json_catalogs = {} ;
+            wd.loadSPARQL ( "SELECT ?q ?qLabel { ?q wdt:"+_props.isa+" wd:"+_items.catalog+" . SERVICE wikibase:label { bd:serviceParam wikibase:language '[AUTO_LANGUAGE],en' } }" , function ( d ) {
+//                console.log(JSON.parse(JSON.stringify(d))) ;
+                me.json_catalogs = d ;
+                me.loaded = true ;
+            } ) ;
         } ,
         updated : function () { tt.updateInterface(this.$el) ; } ,
         mounted : function () { tt.updateInterface(this.$el) ; } ,

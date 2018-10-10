@@ -1,0 +1,15 @@
+{
+	"props":{
+	    "isa" : "P2" ,
+	    "catalog" : "P3" ,
+	    "manual" : "P9" ,
+	    "auto" : "P10" ,
+	    "na" : "P11" ,
+	    "type_q" : "P7",
+	    "matched_by" : "P12" ,
+	    "matched_on" : "P13"
+	} ,
+	"items":{
+		"catalog" : "Q2" 
+	}
+}

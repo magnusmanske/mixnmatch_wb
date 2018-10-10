@@ -1,0 +1,149 @@
+<style>
+div.card-header {
+    padding:5px;
+}
+div.card {
+    margin-bottom:1rem;
+}
+.numeric {
+    text-align:right;
+    font-family: Courier;
+    white-space:nowrap;
+}
+</style>
+
+<template id='catalog-page-template'>
+	<div class='container'>
+		<tool-navbar>
+                <template slot='right'>
+                </template>
+        </tool-navbar>
+        <div v-if='loaded'>
+            <p class='lead'>
+                <h1>{{i.getLabel()}}</h1>
+            </p>
+            <div class='card'>
+                <div class="card-header">
+                    <h5 class='card-title' tt="entries"></h5>
+                </div>
+                <div class="card-body">
+                    <table class='table table-sm'>
+                        <tbody>
+                            <tr v-for='s in stats_rows'>
+                                <td nowrap>
+                                    <router-link :tt='s.tt' :to="'/list/'+s.key+'/'+catalog_q"></router-link>
+                                </td>
+                                <td class='numeric'>
+                                    {{stats[s.key]}}
+                                </td>
+                                <td style='width:100%'>
+                                    <div class="progress">
+                                        <div :class="'progress-bar '+s.class" role="progressbar" :style="'width:'+(100*stats[s.key]/stats.total)+'%'">
+                                            {{(Math.round(1000*stats[s.key]/stats.total)/10)+'%'}}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td tt='total'>
+                                </td>
+                                <td class='numeric'>
+                                    <b>{{stats.total}}</b>
+                                </td>
+                                <td/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class='card'>
+                <div class="card-header">
+                    <h5 class='card-title' tt="entry_types"></h5>
+                </div>
+                <div class="card-body">
+                    <table class='table table-sm table-striped'>
+                        <tbody>
+                            <tr v-for='t in types'>
+                                <td style='width:100%'>
+                                    <wd-link :item='t.q' :wd='wdwd'></wd-link>
+                                </td>
+                                <td class='numeric'>
+                                    {{t.cnt}}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div v-else>
+            <i>Loading...</i>
+        </div>
+	</div>
+</template>
+
+<script>
+'use strict';
+
+let CatalogPage = Vue.extend ( {
+        props : [ 'catalog_q' ] ,
+        data : function () { return { loaded:false , i:{} , types:[] , stats:{} , stats_rows:[
+            { class:'bg-success' , key:'manual' , tt:'manually_matched' } ,
+            { class:'bg-info' , key:'auto' , tt:'auto_matched' } ,
+            { class:'bg-warning' , key:'na' , tt:'not_applicable' } ,
+            { class:'' , key:'unmatched' , tt:'not_matched' } ,
+        ] } } ,
+        created : function () {
+            let me = this ;
+            me.loaded = false ;
+            me.stats = {} ;
+            me.types = [] ;
+            Promise.all ( [
+                new Promise(function(resolve, reject) { wd.getItemBatch([me.catalog_q],resolve) } ) ,
+                new Promise(function(resolve, reject) { // stats.auto
+                    wd.loadSPARQL ( 
+                        'SELECT (count(distinct ?catalog_q) AS ?cnt) { VALUES ?props {wdt:'+_props.manual+' wdt:'+_props.na+'}.?catalog_q wdt:'+_props.catalog+' wd:'+me.catalog_q+' ; wdt:'+_props.auto+' [] MINUS { ?catalog_q ?props [] } }',
+                        function ( d ) { me.stats.auto = d.results.bindings[0].cnt.value*1 ; resolve() } )
+                } ) ,
+                new Promise(function(resolve, reject) { // stats.manual
+                    wd.loadSPARQL ( 
+                        'SELECT (count(distinct ?catalog_q) AS ?cnt) { ?catalog_q wdt:'+_props.catalog+' wd:'+me.catalog_q+' ; wdt:'+_props.manual+' [] }', // Manual match trumps every unmatched property!
+                        function ( d ) { me.stats.manual = d.results.bindings[0].cnt.value*1 ; resolve() } )
+                } ) ,
+                new Promise(function(resolve, reject) { // stats.na
+                    wd.loadSPARQL ( 
+                        'SELECT (count(distinct ?catalog_q) AS ?cnt) { ?catalog_q wdt:'+_props.catalog+' wd:'+me.catalog_q+' ; wdt:'+_props.na+' [] MINUS { ?catalog_q wdt:'+_props.manual+' [] } }',
+                        function ( d ) { me.stats.na = d.results.bindings[0].cnt.value*1 ; resolve() } )
+                } ) ,
+                new Promise(function(resolve, reject) { // stats.unmatched
+                    wd.loadSPARQL ( 
+                        'SELECT (count(distinct ?catalog_q) AS ?cnt) { VALUES ?props { wdt:'+_props.manual+' wdt:'+_props.auto+' wdt:'+_props.na+' } . ?catalog_q wdt:'+_props.catalog+' wd:'+me.catalog_q+' MINUS { ?catalog_q ?props [] } }',
+                        function ( d ) { me.stats.unmatched = d.results.bindings[0].cnt.value*1 ; resolve() } )
+                } ) ,
+                new Promise(function(resolve, reject) { // types
+                    wd.loadSPARQL ( 
+                        'SELECT ?type (count(DISTINCT ?q) AS ?cnt) { ?q wdt:'+_props.catalog+' wd:'+me.catalog_q+' ; wdt:'+_props.type_q+' ?type } GROUP BY ?type ORDER BY DESC(?type)',
+                        function ( d ) {
+                            
+                            $.each ( d.results.bindings , function ( dummy , b ) {
+//                                console.log(JSON.parse(JSON.stringify(b))) ;
+                                me.types.push ( { q:b.type.value , cnt:b.cnt.value*1 } ) ;
+                            } ) ;
+                            resolve()
+                        } )
+                } ) ,
+
+            ] ) .then ( () => {
+                me.i = wd.getItem(me.catalog_q) ;
+                if ( typeof me.i == 'undefined' ) return ; // Problem loading catalog item
+                me.stats.total = me.stats.manual + me.stats.auto + me.stats.na + me.stats.unmatched ;
+                me.loaded = true ;
+            } ) ;
+        } ,
+        updated : function () { tt.updateInterface(this.$el) ; } ,
+        mounted : function () { tt.updateInterface(this.$el) ; } ,
+        methods : {
+        },
+        template:'#catalog-page-template'
+    } ) ;
+</script>
