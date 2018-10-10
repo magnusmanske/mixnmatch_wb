@@ -1,0 +1,158 @@
+<style>
+a.set_user_q { color:#14866d; }
+a.new_item { color:#b32424; }
+a.set_na { color:#fc3; }
+div.entry_block {
+	width:100%;
+	display:flex;
+	flex-direction:column;
+	padding-left:1px;
+	font-size:11pt;
+}
+div.entry_block:nth-child(even) {background: #FFF}
+div.entry_block:nth-child(odd) {background: #eaecf0}
+div.entry_row {
+	display:flex;
+	flex-direction:row;
+}
+div.entry_col1 {
+	min-width:10rem;
+	max-width:10rem;
+	font-family:Lato, Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+div.entry_col2 {
+	width:100%;
+	font-family:Charter, Verdana, Times New Roman;
+}
+div.entry_col3 {
+	min-width:10rem;
+	max-width:10rem;
+	font-family:Lato, Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+div.entry_col12 {
+	width:100%;
+	font-family:Lato, Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+</style>
+
+<template id='entry-template'>
+<div v-if='is_loaded' class='entry_block'>
+	<div class='entry_row' style='border-bottom:1px dotted rgb(221, 221, 221);'>
+		<div class='entry_col1'>
+			<router-link :to="'/entry/'+q">#</router-link>
+			<a v-if='getExtUrl()!=""' class='external' :href='getExtUrl()' target='_blank'>
+				{{getLabel()}}
+			</a>
+			<span v-else>
+				{{getLabel()}}
+			</span>
+		</div>
+		<div class='entry_col2'>
+			{{i.getDesc()}}
+		</div>
+		<div class='entry_col3'>
+			<div v-if='hasManualMatch()'>
+			</div>
+			<div v-else-if='hasAutoMatch()'>
+			</div>
+			<div v-else-if='isNA()'>
+			</div>
+			<div v-else>
+				<i tt='not_matched'></i>
+			</div>
+		</div>
+	</div>
+	<div v-if='entering_wd_q' class='entry_row'>
+		<typeahead-search @setq='onSetQ($event)' @cancel='entering_wd_q=false'></typeahead-search>
+	</div>
+	<div v-else-if='hasManualMatch()' class='entry_row' v-for='m in getManualMatches()'>
+		{{m}}
+	</div>
+	<div v-else-if='isUnmatched()' class='entry_row'>
+		<div class='entry_col12'>
+			<a class='wikidata' target='_blank' tt='search_wd' :href='"https://www.wikidata.org/w/index.php?button=&title=Special%3ASearch&search="+encodeURIComponent(getWikidataSearchString())'></a>
+<!--			<a class='external' target='_blank' tt='search_wikipedia' :href='getWikipediaSearchString()'></a>-->
+			|
+			<a class='external' target='_blank' tt='google_wikipedia' :href='"https://www.google.com/#q=site%3Awikipedia.org+"+encodeURIComponent(getWikidataSearchString())'></a>
+			|
+			<a class='external' target='_blank' tt='google_wikidata' :href='"https://www.google.com/#q=site%3Awikidata.org+"+encodeURIComponent(getWikidataSearchString())'></a>
+		</div>
+		<div class='entry_col3'>
+			<a href='#' class='set_user_q' @click.prevent='onSetUserQ' tt='set_q'></a>
+			|
+			New item
+			|
+			N/A
+		</div>
+	</div>
+	<div v-else class='entry_row'>
+		<div class='entry_col1'>
+			MORE
+		</div>
+		<div class='entry_col2'>
+			EVEN MORE
+		</div>
+		<div class='entry_col3'>
+			ACTION
+		</div>
+	</div>
+</div>
+</template>
+
+
+<script>
+'use strict';
+
+Vue.component ( 'entry' , {
+    props : [ 'q' ] ,
+    data : function () { return { is_loaded:false , i:{} , entering_wd_q:false } } ,
+    created : function () {
+        let me = this ;
+        me.i = wd.getItem ( me.q ) ;
+        if ( typeof me.i == 'undefined' ) return ;
+        me.is_loaded = true ;
+    } ,
+    updated : function () { tt.updateInterface(this.$el) } ,
+    mounted : function () { tt.updateInterface(this.$el) } ,
+    methods : {
+    	getLabel : function () {
+    		return this.i.getLabel().replace(/_/g,' ').replace(/\s+/g,' ') ;
+    	} ,
+    	getExtUrl : function () {
+    		return this.i.getFirstStringForProperty(_props.ext_url) ;
+    	} ,
+    	hasManualMatch : function () {
+    		return this.i.hasClaims(_props.manual) ;
+    	} ,
+    	hasAutoMatch : function () {
+    		return this.i.hasClaims(_props.auto) ;
+    	} ,
+    	isNA : function () {
+    		return this.i.hasClaims(_props.na) ;
+    	} ,
+    	isUnmatched : function () {
+    		return !(this.hasManualMatch()||this.hasAutoMatch()||this.isNA()) ;
+    	} ,
+    	getWikidataSearchString : function () {
+    		return this.i.getLabel() ; // TODO
+    	} ,
+    	getWikipediaSearchString : function () {
+    		return this.i.getLabel() ; // TODO
+    	} ,
+    	getGoogleSearchString : function () {
+    		return this.i.getLabel() ; // TODO
+    	} ,
+    	getManualMatches : function () {
+    		return this.i.getClaimItemsForProperty(_props.manual,true);
+    	} ,
+    	onSetUserQ : function () {
+    			this.entering_wd_q = true ;
+    	} ,
+    	onSetQ : function ( event ) {
+    		console.log ( JSON.parse(JSON.stringify(event)) ) ;
+    		this.entering_wd_q = false ;
+    	}
+    } ,
+    template : '#entry-template'
+} ) ;
+</script>

@@ -2,6 +2,7 @@
 	"props":{
 	    "isa" : "P2" ,
 	    "catalog" : "P3" ,
+	    "ext_url" : "P6" ,
 	    "manual" : "P9" ,
 	    "auto" : "P10" ,
 	    "na" : "P11" ,

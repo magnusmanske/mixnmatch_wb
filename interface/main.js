@@ -15,6 +15,7 @@ $(document).ready ( function () {
     Promise.all ( [
             vue_components.loadComponents ( ['widar','wd-date','wd-link','tool-translate','tool-navbar','commons-thumbnail','snak','value-validator','typeahead-search',
                 'vue_components/sparql-results.html',
+                'vue_components/entry.html',
                 'vue_components/main-page.html',
                 'vue_components/catalog-page.html',
                 'vue_components/list-page.html',

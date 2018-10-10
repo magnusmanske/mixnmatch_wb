@@ -1,0 +1,89 @@
+<template id='list-page-template'>
+	<div class='container'>
+		<tool-navbar>
+                <template slot='right'>
+                </template>
+        </tool-navbar>
+        <div v-if='loaded'>
+            <p class='lead'>
+                <h1>{{i.getLabel()}}</h1>
+            </p>
+            <div>
+            	<div is='entry' v-for='entry in entries' :q='entry'></div>
+            </div>
+            <div style='text-align:center'>
+            	<span v-if='has_less'>
+            		<router-link :to="'/list/'+mode+'/'+catalog_q+'/'+(current_page-1)">Prev</router-link>
+            	</span>
+            	<span>
+            		{{current_page+1}}
+            	</span>
+            	<span v-if='has_more'>
+            		<router-link :to="'/list/'+mode+'/'+catalog_q+'/'+(current_page+1)">Next</router-link>
+            	</span>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+'use strict';
+
+let ListPage = Vue.extend ( {
+        props : [ 'catalog_q' , 'mode' , 'page' ] ,
+        data : function () { return { loaded:false , i:{} , current_page:0 , batch_size:10 , offset:0 , entries:[] , has_more:false , has_less:false } } ,
+        created : function () {
+            let me = this ;
+            me.loaded = false ;
+            if ( typeof me.page != 'undefined' ) me.current_page = me.page*1 ;
+            Promise.all ( [
+                new Promise(function(resolve, reject) { wd.getItemBatch([me.catalog_q],resolve) } ) ,
+                me.loadCurrentBatch() ,
+            ] ) .then ( () => {
+                me.i = wd.getItem(me.catalog_q) ;
+                if ( typeof me.i == 'undefined' ) return ; // Problem loading catalog item
+                me.loaded = true ;
+            } ) ;
+		} ,
+        updated : function () { tt.updateInterface(this.$el) ; } ,
+        mounted : function () { tt.updateInterface(this.$el) ; } ,
+        methods : {
+        	loadCurrentBatch : function () {
+        		let me = this ;
+        		return new Promise(function(resolve, reject) {
+        			me.offset = me.current_page * me.batch_size ;
+        			me.has_less = me.offset>0 ;
+        			let avoid_props = [] ;
+        			if ( me.mode == 'unmatched' ) avoid_props = [ _props.manual , _props.auto , _props.na ] ;
+        			// TODO other modes
+        			if ( avoid_props.length == 0 ) avoid_props = '' ;
+        			else avoid_props = "VALUES ?prop { wdt:" + avoid_props.join(' wdt:') + " } ." ;
+        			let sparql = "SELECT DISTINCT ?q { " + avoid_props + " ?q wdt:"+_props.catalog+" wd:"+me.catalog_q+" " ;
+        			if ( avoid_props != '' ) sparql += " OPTIONAL { ?q ?prop ?x } FILTER ( !bound(?x) ) " ;
+        			sparql += " } ORDER BY ?q LIMIT "+me.batch_size+" OFFSET "+me.offset ;
+        			console.log ( sparql ) ;
+        			wd.loadSPARQLitems ( sparql , function ( d ) {
+        				me.entries = d ;
+        				me.has_more = d.length == me.batch_size ;
+        				wd.getItemBatch ( d , function () {
+        					let to_load = [] ;
+        					$.each ( me.entries , function ( dummy , e ) {
+        						let i = wd.getItem(e) ;
+        						if ( typeof i == 'undefined' ) return ;
+        						if ( i.hasClaims(_props.manual) ) {
+	        						$.each ( i.getClaimItemsForProperty(_props.manual,true) , function ( dummy2 , q ) { to_load.push ( q ) } ) ;
+        						} else {
+	        						$.each ( i.getClaimItemsForProperty(_props.auto,true) , function ( dummy2 , q ) { to_load.push ( q ) } ) ;
+        						}
+        					} ) ;
+        					wdwd.getItemBatch ( to_load , function () {
+		        				resolve() ;
+		        			} ) ;
+        				} ) ;
+        			} ) ;
+        		} ) ;
+        	}
+        },
+        template:'#list-page-template'
+    } ) ;
+</script>
