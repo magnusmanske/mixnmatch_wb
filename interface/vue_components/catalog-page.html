@@ -101,7 +101,7 @@ let CatalogPage = Vue.extend ( {
             new Promise(function(resolve, reject) { wd.getItemBatch([me.catalog_q],resolve) } ) ,
             new Promise(function(resolve, reject) { // stats.auto
                 wd.loadSPARQL ( 
-                    'SELECT (count(distinct ?catalog_q) AS ?cnt) { VALUES ?props {wdt:'+_props.manual+' wdt:'+_props.na+'}.?catalog_q wdt:'+_props.catalog+' wd:'+me.catalog_q+' ; wdt:'+_props.auto+' [] MINUS { ?catalog_q ?props [] } }',
+                    'SELECT (count(distinct ?catalog_q) AS ?cnt) { ?catalog_q wdt:'+_props.catalog+' wd:'+me.catalog_q+' ; wdt:'+_props.auto+' [] MINUS { ?catalog_q wdt:'+_props.manual+' [] } MINUS { ?catalog_q wdt:'+_props.na+' [] } }',
                     function ( d ) { me.stats.auto = d.results.bindings[0].cnt.value*1 ; resolve() } )
             } ) ,
             new Promise(function(resolve, reject) { // stats.manual
@@ -116,7 +116,7 @@ let CatalogPage = Vue.extend ( {
             } ) ,
             new Promise(function(resolve, reject) { // stats.unmatched
                 wd.loadSPARQL ( 
-                    'SELECT (count(distinct ?catalog_q) AS ?cnt) { VALUES ?props { wdt:'+_props.manual+' wdt:'+_props.auto+' wdt:'+_props.na+' } . ?catalog_q wdt:'+_props.catalog+' wd:'+me.catalog_q+' MINUS { ?catalog_q ?props [] } }',
+                    'SELECT (count(distinct ?catalog_q) AS ?cnt) { ?catalog_q wdt:'+_props.catalog+' wd:'+me.catalog_q+' MINUS { ?catalog_q wdt:'+_props.manual+' [] } MINUS { ?catalog_q wdt:'+_props.auto+' [] } MINUS { ?catalog_q wdt:'+_props.na+' [] } }',
                     function ( d ) { me.stats.unmatched = d.results.bindings[0].cnt.value*1 ; resolve() } )
             } ) ,
             new Promise(function(resolve, reject) { // types

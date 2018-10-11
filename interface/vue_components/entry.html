@@ -76,7 +76,7 @@ div.entry_col12 {
 		<div class='entry_col3' v-else tt='log_into_widar'></div>
 	</div>
 	<div v-if='entering_wd_q' class='entry_row'>
-		<typeahead-search @setq='onSetQ($event)' @cancel='entering_wd_q=false'></typeahead-search>
+		<typeahead-search :initial='getWikidataSearchString()' @setq='onSetQ($event)' @cancel='entering_wd_q=false'></typeahead-search>
 	</div>
 	<div v-else-if='hasManualMatch()' class='entry_row' v-for='c in getManualMatches()'>
 		<div class='entry_col1'>
