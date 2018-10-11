@@ -9,11 +9,17 @@ let wdwd = new WikiData() ; // Wikidata
 
 let global_configuration , _props , _items ;
 
+/*
+RECENT CHANGES:
+SELECT ?q ?d { ?q wdt:P3 wd:Q4 ; schema:dateModified ?d } ORDER BY DESC(?d) LIMIT 50
+*/
+
 $(document).ready ( function () {
     vue_components.toolname = "mix-n-match" ;
     vue_components.components_base_url = 'https://mixnmatch.wmflabs.org/interface/resources/vue/' ;
     Promise.all ( [
             vue_components.loadComponents ( ['widar','wd-date','wd-link','tool-translate','tool-navbar','commons-thumbnail','snak','value-validator','typeahead-search',
+                'vue_components/mixin-edit.html',
                 'vue_components/sparql-results.html',
                 'vue_components/entry.html',
                 'vue_components/catalog-dropdown.html',

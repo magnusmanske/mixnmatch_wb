@@ -26,7 +26,7 @@ table.entry_table tbody td {
             <div class="card-header">
                 <h5 class='card-title'>
                     {{i.getLabel()}}
-                    <span style='font-size:11pt'>[<a target='_blank' class='wikidata' :href="'/wiki/Item:'+q">{{q}}</a>]</span>
+                    <span style='font-size:11pt'>[<a target='_blank' class='mixnmatch_wb' :href="'/wiki/Item:'+q">{{q}}</a>]</span>
                 </h5>
             </div>
             <div class="card-body">
@@ -34,7 +34,7 @@ table.entry_table tbody td {
                     <tbody>
                         <tr>
                             <th tt='entry'></th>
-                            <td><a target='_blank' class='wikidata' :href="'/wiki/Item:'+q">{{q}}</a></td>
+                            <td><a target='_blank' class='mixnmatch_wb' :href="'/wiki/Item:'+q">{{q}}</a></td>
                         </tr>
                         <tr>
                             <th tt='external_id2'></th>
@@ -51,7 +51,10 @@ table.entry_table tbody td {
                         <tr v-for="c in getClaims('manual')">
                             <th tt='manually_matched'></th>
                             <td>
-                                <div><wd-link :item='i.getClaimTargetString(c)'></wd-link></div>
+                                <div style='float:right;padding:5px;'>
+                                    <button class='btn btn-outline-danger' tt='remove' @click.prevent='onRemoveMatch(i.getID(),i.getClaimTargetString(c))'></button>
+                                </div>
+                                <div><wd-link :wd='wdwd' :item='i.getClaimTargetString(c)' smallq='1'></wd-link></div>
                                 <div v-html='getMatchedByOn(c)'>
                                 </div>
                             </td>
@@ -72,6 +75,7 @@ table.entry_table tbody td {
 
 let EntryPage = Vue.extend ( {
     props : [ 'q' ] ,
+    mixins : [ editMixin ] ,
     data : function () { return { is_loaded:false , i:{} , catalog_q:'' , ic:{} } } ,
     created : function () {
         let me = this ;
@@ -102,16 +106,12 @@ let EntryPage = Vue.extend ( {
         getMatchedByOn : function ( c ) {
             let me = this ;
             if ( typeof c.qualifiers == 'undefined' ) return '' ;
-            let user = (typeof c.qualifiers[_props['matched_by']]=='undefined') ? '' : c.qualifiers[_props['matched_by']][0].datavalue.value ;
+            let user = me.getMatchedByUserNameFromClaim ( c ) ;
             let date = (typeof c.qualifiers[_props['matched_on']]=='undefined') ? '' : c.qualifiers[_props['matched_on']][0].datavalue.value.time.replace(/^\D*([0-9-]+).*$/,'$1') ;
             if ( user=='' && date=='' ) return '' ;
             let ret = 'Matched' ;
             if ( user != '' ) {
-                if ( /^Mix'n'match /.test(user) ) {
-                    user = '<i>' + user + '</i>' ;
-                } else {
-                    user = "<a href='https://www.wikidata.org/wiki/User:"+encodeURIComponent(user).replace(/'/g,'&apos;')+"' target='_blank' class='wikidata'>" + user + "</a>" ;
-                }
+                user = me.getUserLink ( user ) ;
                 ret += ' by <tt>' + user + '</tt>' ;
             }
             if ( date != '' ) ret += ' on ' + date ;

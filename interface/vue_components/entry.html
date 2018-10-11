@@ -2,6 +2,7 @@
 a.set_user_q { color:#14866d; }
 a.new_item { color:#b32424; }
 a.set_na { color:#fc3; }
+a.remove_user_q { color:#b32424; }
 div.entry_block {
 	width:100%;
 	display:flex;
@@ -14,6 +15,12 @@ div.entry_block:nth-child(odd) {background: #eaecf0}
 div.entry_row {
 	display:flex;
 	flex-direction:row;
+}
+div.entry_block:not(:first-child) {
+	border-top:1px solid rgb(221, 221, 221);
+}
+div.entry_row:not(:first-child) {
+	border-top:1px dotted rgb(221, 221, 221);
 }
 div.entry_col1 {
 	min-width:10rem;
@@ -29,6 +36,11 @@ div.entry_col3 {
 	max-width:10rem;
 	font-family:Lato, Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
+div.entry_col3b {
+	min-width:12rem;
+	max-width:12rem;
+	font-family:Lato, Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
 div.entry_col12 {
 	width:100%;
 	font-family:Lato, Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
@@ -37,7 +49,7 @@ div.entry_col12 {
 
 <template id='entry-template'>
 <div v-if='is_loaded' class='entry_block'>
-	<div class='entry_row' style='border-bottom:1px dotted rgb(221, 221, 221);'>
+	<div class='entry_row'>
 		<div class='entry_col1'>
 			<router-link :to="'/entry/'+q">#</router-link>
 			<a v-if='getExtUrl()!=""' class='external' :href='getExtUrl()' target='_blank'>
@@ -52,7 +64,6 @@ div.entry_col12 {
 		</div>
 		<div class='entry_col3'>
 			<div v-if='hasManualMatch()'>
-				<i>whomatchedit</i>
 			</div>
 			<div v-else-if='hasAutoMatch()'>
 			</div>
@@ -66,17 +77,20 @@ div.entry_col12 {
 	<div v-if='entering_wd_q' class='entry_row'>
 		<typeahead-search @setq='onSetQ($event)' @cancel='entering_wd_q=false'></typeahead-search>
 	</div>
-	<div v-else-if='hasManualMatch()' class='entry_row' v-for='match in getManualMatches()'>
+	<div v-else-if='hasManualMatch()' class='entry_row' v-for='c in getManualMatches()'>
 		<div class='entry_col1'>
-			<wd-link :wd='wdwd' :item='match'></wd-link>
+			<wd-link :wd='wdwd' :item='i.getClaimTargetString(c)'></wd-link>
 		</div>
 		<div class='entry_col2'>
-			<span v-if='typeof getWDitem(match)!="undefined"'>
-				{{getWDitem(match).getDesc()}}
+			<span v-if='typeof getWDitem(i.getClaimTargetString(c))!="undefined"'>
+				{{getWDitem(i.getClaimTargetString(c)).getDesc()}}
 			</span>
 		</div>
-		<div class='entry_col3'>
-			Remove
+		<div class='entry_col3b'>
+			<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
+			<div>
+				<a href='#' class='remove_user_q' @click.prevent='onRemoveMatch(q,i.getClaimTargetString(c))' tt='remove'></a>
+			</div>
 		</div>
 	</div>
 	<div v-else-if='isUnmatched()' class='entry_row'>
@@ -116,6 +130,7 @@ div.entry_col12 {
 
 Vue.component ( 'entry' , {
     props : [ 'q' ] ,
+    mixins : [ editMixin ] ,
     data : function () { return { is_loaded:false , i:{} , entering_wd_q:false } } ,
     created : function () {
         let me = this ;
@@ -123,8 +138,8 @@ Vue.component ( 'entry' , {
         if ( typeof me.i == 'undefined' ) return ;
 
         let to_load = [] ;
-        $.each ( me.getManualMatches() , function ( k , v ) { to_load.push(v) } ) ;
-        $.each ( me.getAutoMatches() , function ( k , v ) { to_load.push(v) } ) ;
+        $.each ( me.getManualMatches() , function ( dummy , c ) { to_load.push(me.i.getClaimTargetString(c)) } ) ;
+        $.each ( me.getAutoMatches() , function ( dummy , s ) { to_load.push(s) } ) ;
         wdwd.getItemBatch ( to_load , function () {
 	        me.is_loaded = true ;
         } ) ;
@@ -141,7 +156,7 @@ Vue.component ( 'entry' , {
     	getWikidataSearchString : function () { return this.i.getLabel() } , // TODO
     	getWikipediaSearchString : function () { return this.i.getLabel() } , // TODO
     	getGoogleSearchString : function () { return this.i.getLabel() } , // TODO
-    	getManualMatches : function () { return this.i.getStringsForProperty(_props.manual) } ,
+    	getManualMatches : function () { return this.i.getClaimsForProperty(_props.manual) } ,
     	getAutoMatches : function () { return this.i.getStringsForProperty(_props.auto) } ,
     	getWDitem : function ( q ) { return wdwd.getItem(q) } ,
     	onSetUserQ : function () {

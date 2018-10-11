@@ -1,0 +1,25 @@
+<script>
+
+var editMixin = {
+	created : function () {
+
+	} ,
+	methods : {
+		onRemoveMatch : function ( q , wdq ) {
+			console.log ( q , wdq ) ;
+		} ,
+		getMatchedByUserNameFromClaim : function ( c ) {
+			return (typeof c.qualifiers[_props['matched_by']]=='undefined') ? '' : c.qualifiers[_props['matched_by']][0].datavalue.value ;
+		} ,
+		getUserLink : function ( user ) {
+			if ( user == '' ) return '' ;
+            if ( /^Mix'n'match /.test(user) ) {
+                return '<i>' + user + '</i>' ;
+            } else {
+                return "<a href='https://www.wikidata.org/wiki/User:"+encodeURIComponent(user).replace(/'/g,'&apos;')+"' target='_blank' class='wikidata'>" + user + "</a>" ;
+            }
+		} ,
+	}
+} ;
+
+</script>
