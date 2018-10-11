@@ -18,7 +18,7 @@ $(document).ready ( function () {
     vue_components.toolname = "mix-n-match" ;
     vue_components.components_base_url = 'https://mixnmatch.wmflabs.org/interface/resources/vue/' ;
     Promise.all ( [
-            vue_components.loadComponents ( ['widar','wd-date','wd-link','tool-translate','tool-navbar','commons-thumbnail','snak','value-validator','typeahead-search',
+            vue_components.loadComponents ( ['widar','wd-date','wd-link','tool-translate','tool-navbar','commons-thumbnail','snak','batch-navigator','value-validator','typeahead-search',
                 'vue_components/mixin-edit.html',
                 'vue_components/sparql-results.html',
                 'vue_components/entry.html',

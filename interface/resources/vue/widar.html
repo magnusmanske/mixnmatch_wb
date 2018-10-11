@@ -10,7 +10,7 @@
 let widar ;
 
 Vue.component ( 'widar' , {
-	data : function () { return { is_logged_in:false , userinfo:{} , widar_api:'/widar/index.php' , loaded:false , toolname:'' } } ,
+	data : function () { return { is_logged_in:false , userinfo:{} , widar_api:'https://tools.wmflabs.org/widar/index.php?callback2=?' , loaded:false , toolname:'' } } ,
 	created : function () {
 		widar = this ;
 		this.checkLogin()
@@ -20,7 +20,7 @@ Vue.component ( 'widar' , {
 	methods : {
 		checkLogin : function () {
 			let me = this ;
-			$.get ( me.widar_api , {
+			$.getJSON ( me.widar_api , {
 				action:'get_rights',
 				botmode:1
 			} , function ( d ) {
@@ -30,7 +30,7 @@ Vue.component ( 'widar' , {
 					me.userinfo = d.result.query.userinfo ;
 				} else {
 				}
-			} , 'json' ) ;
+			} ) ;
 /*
 			fetch ( this.widar_api , {
 				action:'get_rights',
@@ -50,7 +50,7 @@ Vue.component ( 'widar' , {
 			let me = this ;
 			if ( me.tool != '' && typeof params.tool_hashtag == 'undefined' ) params.tool_hashtag = me.toolname ;
 			params.botmode = 1 ;
-			$.post ( me.widar_api , params , function ( d ) {
+			$.getJSON ( me.widar_api , params , function ( d ) {
 				if ( d.error != 'OK' ) {
 					console.log ( 'WIDAR' , params ) ;
 					if ( null != d.error.match(/Invalid token/) || null != d.error.match(/happen/) || null != d.error.match(/Problem creating item/) || ( params.action!='create_redirect' && null != d.error.match(/failed/) ) ) {
@@ -65,7 +65,7 @@ Vue.component ( 'widar' , {
 				} else {
 					callback ( d ) ;
 				}
-			} , 'json' ) . fail(function() {
+			} ) . fail(function() {
 				console.log ( "Again" , params ) ;
 				me.run ( params , callback ) ;
 			}) ;

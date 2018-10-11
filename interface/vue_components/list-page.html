@@ -2,24 +2,20 @@
 	<div class='container'>
 		<tool-navbar>
                 <template slot='right'>
+                	<widar></widar>
                 </template>
         </tool-navbar>
         <div v-if='loaded'>
         	<catalog-header :catalog_q='catalog_q'></catalog-header>
+            <div style='margin-bottom:1rem;'>
+	            <batch-navigator style='width:30rem;' :batch_size='batch_size' :total='total_entries' :current='current_page' :batch_size_options='[10,25,50]' @set-current='onSetBatch($event)' @set-size='onSetBatchSize($event)'></batch-navigator>
+	        </div>
             <div>
             	<div is='entry' v-for='entry in entries' :q='entry' :key='entry'></div>
             </div>
-            <div style='text-align:center'>
-            	<span v-if='has_less'>
-            		<router-link :to="'/list/'+mode+'/'+catalog_q+'/'+(current_page-1)">Prev</router-link>
-            	</span>
-            	<span>
-            		{{current_page+1}}
-            	</span>
-            	<span v-if='has_more'>
-            		<router-link :to="'/list/'+mode+'/'+catalog_q+'/'+(current_page+1)">Next</router-link>
-            	</span>
-            </div>
+            <div style='center;margin-top:1rem;'>
+	            <batch-navigator style='width:30rem;' :batch_size='batch_size' :total='total_entries' :current='current_page' :batch_size_options='[10,25,50]' @set-current='onSetBatch($event)' @set-size='onSetBatchSize($event)'></batch-navigator>
+	        </div>
         </div>
     </div>
 </template>
@@ -29,13 +25,15 @@
 
 let ListPage = Vue.extend ( {
         props : [ 'catalog_q' , 'mode' , 'page' ] ,
-        data : function () { return { loaded:false , i:{} , current_page:0 , batch_size:10 , offset:0 , entries:[] , has_more:false , has_less:false } } ,
+        data : function () { return { loaded:false , i:{} , current_page:0 , batch_size:10 , offset:0 , entries:[] , total_entries:0 } } ,
         created : function () {
             let me = this ;
             me.loaded = false ;
+            if ( typeof me.$route.query.size != 'undefined' ) me.batch_size = me.$route.query.size*1 ;
             if ( typeof me.page != 'undefined' ) me.current_page = me.page*1 ;
             Promise.all ( [
                 new Promise(function(resolve, reject) { wd.getItemBatch([me.catalog_q],resolve) } ) ,
+                me.loadStatistics() ,
                 me.loadCurrentBatch() ,
             ] ) .then ( () => {
                 me.i = wd.getItem(me.catalog_q) ;
@@ -51,25 +49,34 @@ let ListPage = Vue.extend ( {
 				let avoid_props = [] ;
 				if ( me.mode == 'unmatched' ) avoid_props = [ _props.manual , _props.auto , _props.na ] ;
 				if ( me.mode == 'auto' ) avoid_props = [ _props.manual , _props.na ] ;
-				// TODO other modes
-				if ( avoid_props.length == 0 ) avoid_props = '' ;
-				else avoid_props = "VALUES ?prop { wdt:" + avoid_props.join(' wdt:') + " } ." ;
-				let sparql_conditions = avoid_props + " ?q wdt:"+_props.catalog+" wd:"+me.catalog_q+" " ;
+
+				let sparql_conditions = "?q wdt:"+_props.catalog+" wd:"+me.catalog_q+" " ;
 				if ( me.mode == 'manual' ) sparql_conditions += " ; wdt:" + _props.manual + " [] " ;
 				if ( me.mode == 'auto' ) sparql_conditions += " ; wdt:" + _props.auto + " [] " ;
-				if ( avoid_props != '' ) sparql_conditions += " OPTIONAL { ?q ?prop ?x } FILTER ( !bound(?x) ) " ;
+				if ( me.mode == 'na' ) sparql_conditions += " ; wdt:" + _props.na + " [] " ;
+
+				$.each ( avoid_props , function ( dummy , prop ) {
+					sparql_conditions += " MINUS { ?q wdt:" + prop + " [] } " ;
+				} ) ;
 				return sparql_conditions ;
+        	} ,
+        	loadStatistics : function () {
+        		let me = this ;
+        		return new Promise(function(resolve, reject) {
+        			let sparql = "SELECT (COUNT(DISTINCT ?q) AS ?cnt) { " + me.getSPARQLconditions() + " }" ;
+        			wd.loadSPARQL ( sparql , function ( d ) {
+        				me.total_entries = d.results.bindings[0].cnt.value * 1 ;
+        				resolve();
+        			} ) ;
+        		} ) ;
         	} ,
         	loadCurrentBatch : function () {
         		let me = this ;
+    			me.offset = me.current_page * me.batch_size ;
         		return new Promise(function(resolve, reject) {
-        			me.offset = me.current_page * me.batch_size ;
-        			me.has_less = me.offset>0 ;
         			let sparql = "SELECT DISTINCT ?q { " + me.getSPARQLconditions() + " } ORDER BY ?q LIMIT "+me.batch_size+" OFFSET "+me.offset ;
-//        			console.log ( sparql ) ;
         			wd.loadSPARQLitems ( sparql , function ( d ) {
         				me.entries = d ;
-        				me.has_more = d.length == me.batch_size ;
         				wd.getItemBatch ( d , function () {
         					let to_load = [] ;
         					$.each ( me.entries , function ( dummy , e ) {
@@ -87,7 +94,20 @@ let ListPage = Vue.extend ( {
         				} ) ;
         			} ) ;
         		} ) ;
-        	}
+        	} ,
+        	getMyURL : function ( new_page , batch_size ) {
+        		let url = '/list/'+this.mode+'/'+this.catalog_q ;
+        		if ( new_page != 0 ) url += '/'+new_page ;
+        		if ( batch_size != 10 ) url += "/?size=" + batch_size ;
+        		return url ;
+        	} ,
+        	onSetBatch : function ( new_page ) {
+        		this.$router.push ( this.getMyURL(new_page,this.batch_size) ) ;
+        	} ,
+        	onSetBatchSize : function ( size ) {
+        		let new_page = Math.floor((this.current_page*this.batch_size)/(size*1)) ;
+        		this.$router.push ( this.getMyURL(new_page,size) ) ;
+        	} ,
         },
         template:'#list-page-template'
     } ) ;

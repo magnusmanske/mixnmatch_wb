@@ -48,7 +48,7 @@ div.entry_col12 {
 </style>
 
 <template id='entry-template'>
-<div v-if='is_loaded' class='entry_block'>
+<div v-if='is_loaded && widar.loaded' class='entry_block'>
 	<div class='entry_row'>
 		<div class='entry_col1'>
 			<router-link :to="'/entry/'+q">#</router-link>
@@ -62,7 +62,7 @@ div.entry_col12 {
 		<div class='entry_col2'>
 			{{i.getDesc()}}
 		</div>
-		<div class='entry_col3'>
+		<div class='entry_col3' v-if='isLoggedIn()'>
 			<div v-if='hasManualMatch()'>
 			</div>
 			<div v-else-if='hasAutoMatch()'>
@@ -73,6 +73,7 @@ div.entry_col12 {
 				<i tt='not_matched'></i>
 			</div>
 		</div>
+		<div class='entry_col3' v-else tt='log_into_widar'></div>
 	</div>
 	<div v-if='entering_wd_q' class='entry_row'>
 		<typeahead-search @setq='onSetQ($event)' @cancel='entering_wd_q=false'></typeahead-search>
@@ -86,12 +87,13 @@ div.entry_col12 {
 				{{getWDitem(i.getClaimTargetString(c)).getDesc()}}
 			</span>
 		</div>
-		<div class='entry_col3b'>
+		<div class='entry_col3b' v-if='isLoggedIn()'>
 			<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
 			<div>
 				<a href='#' class='remove_user_q' @click.prevent='onRemoveMatch(q,i.getClaimTargetString(c))' tt='remove'></a>
 			</div>
 		</div>
+		<div class='entry_col3b' v-else tt='log_into_widar'></div>
 	</div>
 	<div v-else-if='isUnmatched()' class='entry_row'>
 		<div class='entry_col12'>
@@ -102,13 +104,24 @@ div.entry_col12 {
 			|
 			<a class='external' target='_blank' tt='google_wikidata' :href='"https://www.google.com/#q=site%3Awikidata.org+"+encodeURIComponent(getWikidataSearchString())'></a>
 		</div>
-		<div class='entry_col3'>
+		<div class='entry_col3' v-if='isLoggedIn()'>
 			<a href='#' class='set_user_q' @click.prevent='onSetUserQ' tt='set_q'></a>
 			|
 			New item
 			|
 			N/A
 		</div>
+		<div class='entry_col3' v-else tt='log_into_widar'></div>
+	</div>
+	<div v-else-if='hasAutoMatch()' class='entry_row' v-for='match in getAutoMatches()'>
+		<div class='entry_col12' style='display:flex;flex-direction:row;'>
+			<div><wd-link :wd='wdwd' :item='match' smallq='true'></wd-link></div>
+			<div>{{getWDitem(match).getDesc()}}</div>
+		</div>
+		<div class='entry_col3' v-if='isLoggedIn()'>
+			<a href='#' class='set_user_q' @click.prevent='onSetQFromAuto(match)' tt='set_q'></a>
+		</div>
+		<div class='entry_col3' v-else tt='log_into_widar'></div>
 	</div>
 	<div v-else class='entry_row'>
 		<div class='entry_col1'>
@@ -147,6 +160,7 @@ Vue.component ( 'entry' , {
     updated : function () { tt.updateInterface(this.$el) } ,
     mounted : function () { tt.updateInterface(this.$el) } ,
     methods : {
+    	isLoggedIn : function () { return widar.is_logged_in } , // global_configuration.is_logged_in &&
     	getLabel : function () { return this.i.getLabel().replace(/_/g,' ').replace(/\s+/g,' ') } ,
     	getExtUrl : function () { return this.i.getFirstStringForProperty(_props.ext_url) } ,
     	hasManualMatch : function () { return this.i.hasClaims(_props.manual) } ,
@@ -163,9 +177,22 @@ Vue.component ( 'entry' , {
    			this.entering_wd_q = true ;
     	} ,
     	onSetQ : function ( event ) {
-    		console.log ( JSON.parse(JSON.stringify(event)) ) ;
+    		let me = this ;
+//    		console.log ( JSON.parse(JSON.stringify(event)) ) ;
+			me.onCreateMatch ( me.q , event , function () {
+				me.forceUpdate() ;
+			} ) ;
     		this.entering_wd_q = false ;
-    	}
+    	} ,
+    	onSetQFromAuto : function ( match_q ) {
+    		let me = this ;
+			me.onCreateMatch ( me.q , match_q , function () {
+				me.forceUpdate() ;
+			} ) ;
+    	} ,
+    	forceUpdate : function () {
+    		this.i = wd.getItem(this.q) ;
+    	} ,
     } ,
     template : '#entry-template'
 } ) ;

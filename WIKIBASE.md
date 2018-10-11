@@ -26,9 +26,29 @@
 $wgGroupPermissions['*']['edit'] = false;
 $wgGroupPermissions['*']['createaccount'] = false;
 $wgEnableEmail=true;
-#$wgWBRepoSettings['formatterUrlProperty'] = 'P368'; # Create and link a formatter URL property
+$wgWBRepoSettings['formatterUrlProperty'] = 'P8'; # Create and link a formatter URL property
 ```
+* Also add that (in similar fashion) to `LocalSettings.php.wikibase-bundle.template` in the Docker image
 * Change sidebar: https://www.mediawiki.org/wiki/Manual:Interface/Sidebar
+
+THIS SEEMS BETTER (anon wikibase edits allowed, everything else down):
+```
+#$wgGroupPermissions['*']['edit'] = false;
+$wgGroupPermissions['*']['createaccount'] = false;
+
+$wgNamespaceProtection[NS_MAIN]     = $wgNamespaceProtection[NS_USER]  =
+$wgNamespaceProtection[NS_PROJECT]  = $wgNamespaceProtection[NS_IMAGE] =
+$wgNamespaceProtection[NS_TEMPLATE] = $wgNamespaceProtection[NS_HELP]  =
+$wgNamespaceProtection[NS_CATEGORY] = array( 'editroot' );
+
+$wgNamespaceProtection[1]     = $wgNamespaceProtection[NS_USER_TALK]  =
+$wgNamespaceProtection[NS_PROJECT_TALK]  = $wgNamespaceProtection[NS_IMAGE_TALK] =
+$wgNamespaceProtection[NS_TEMPLATE_TALK] = $wgNamespaceProtection[NS_HELP_TALK]  =
+$wgNamespaceProtection[NS_CATEGORY_TALK] = array( 'editroot' );
+
+$wgNamespaceProtection[120] = [ 'ns120_edit' ];
+$wgGroupPermissions['*']['ns120_edit'] = true;
+```
 
 ### QuickStatements
 Setup QS as described here (especially the email hack!): https://github.com/wmde/wikibase-docker/blob/master/quickstatements/README.md

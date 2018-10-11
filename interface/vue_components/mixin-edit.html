@@ -1,15 +1,124 @@
 <script>
 
 var editMixin = {
+    data : function () { return {} } ,
 	created : function () {
-
 	} ,
 	methods : {
-		onRemoveMatch : function ( q , wdq ) {
-			console.log ( q , wdq ) ;
+		onCreateMatch : function ( q , wdq , callback ) {
+			let me = this ;
+			let user = widar.getUserName() ;
+			console.log ( 'ADD' , q , wdq ) ;
+
+			let now = new Date(Date.now()) ;
+			let data = {
+				claims:[
+					{
+						mainsnak:{
+							snaktype:'value',
+							property:_props.manual,
+							datavalue:{
+								value:wdq,
+								type:'string'
+							}
+						} ,
+						type : 'statement' ,
+						rank : 'normal' ,
+						qualifiers : {}
+					}
+				]
+			} ;
+			data.claims[0].qualifiers[_props.matched_by] = [ {
+				snaktype : 'value' ,
+				property : _props.matched_by ,
+				datavalue:{
+					value:widar.getUserName(),
+					type:'string'
+				}
+			} ] ;
+			data.claims[0].qualifiers[_props.matched_on] = [ {
+				snaktype : 'value' ,
+				property : _props.matched_on ,
+				datavalue:{
+					value:{
+						time:'+'+now.toISOString().substr(0,10)+'T00:00:00Z',
+						timezone:0,
+						before:0,
+						after:0,
+						precision:11,
+						calendarmodel:'http://www.wikidata.org/entity/Q1985727'
+					} ,
+					type:'time'
+				}
+			} ] ;
+
+			me.editEntity ( q , data , callback ) ;
+
+		} ,
+		onRemoveMatch : function ( q , wdq , callback ) {
+			let me = this ;
+			let user = widar.getUserName() ;
+			console.log ( 'REMOVE' , q , wdq ) ;
+			me.reloadItem ( q , callback ) ;
+		} ,
+		editEntity : function ( q , data , callback ) {
+			let me = this ;
+			me.getEditToken ( function ( token ) {
+				console.log ( token ) ;
+				$.post ( '/w/api.php' , {
+					action:'wbeditentity',
+					id:q,
+					summary:'Edit on behalf of Wikidata:User:'+widar.getUserName(),
+					token:token,
+					data:JSON.stringify(data),
+					format:'json'
+				} , function ( d ) {
+					console.log ( d ) ;
+					me.reloadItem ( q , callback ) ;
+				} , 'json' ) ;
+			} ) ;
+		} ,
+		getEditToken : function ( callback ) {
+			$.get ( '/w/api.php' , {
+				action:'query',
+				meta:'tokens',
+				format:'json'
+			} , function ( d ) {
+				callback ( d.query.tokens.csrftoken ) ;
+			} , 'json' ) ;
+		} ,
+		getWikiUserName : function () { // NOT USED
+			if ( global_configuration.loading_userdata ) return ;
+			if ( global_configuration.is_logged_in ) return ;
+			global_configuration.loading_userdata = true ;
+			global_configuration.is_logged_in = false ;
+			global_configuration.username = '' ;
+			let url = global_configuration.mwapi+'?action=query&meta=userinfo&format=json' ;
+			$.get ( url , function (d) {
+				if ( d.query.userinfo.id == 0 ) return ;
+				global_configuration.is_logged_in = true ;
+				global_configuration.username = d.query.userinfo.name ;
+			} , 'json' ) ;
 		} ,
 		getMatchedByUserNameFromClaim : function ( c ) {
+			if ( typeof c == 'undefined' ) return '' ;
+			if ( typeof c.qualifiers == 'undefined' ) return '' ;
 			return (typeof c.qualifiers[_props['matched_by']]=='undefined') ? '' : c.qualifiers[_props['matched_by']][0].datavalue.value ;
+		} ,
+		reloadItem : function ( q , callback ) {
+			let api_params = {
+				action : 'wbgetentities' ,
+				ids : q ,
+				props : wd.default_props ,
+				format : 'json'
+			} ;
+			$.getJSON ( wd.api , api_params , function ( data ) {
+				$.each ( (data.entities||[]) , function ( k , v ) {
+					let i = new WikiDataItem ( wd , data.entities[q] ) ;
+					Vue.set ( wd.items , q , i ) ;
+				} ) ;
+				if ( typeof callback != 'undefined' ) callback() ;
+			} ) ;
 		} ,
 		getUserLink : function ( user ) {
 			if ( user == '' ) return '' ;
