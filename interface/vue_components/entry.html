@@ -52,6 +52,7 @@ div.entry_col12 {
 		</div>
 		<div class='entry_col3'>
 			<div v-if='hasManualMatch()'>
+				<i>whomatchedit</i>
 			</div>
 			<div v-else-if='hasAutoMatch()'>
 			</div>
@@ -65,8 +66,18 @@ div.entry_col12 {
 	<div v-if='entering_wd_q' class='entry_row'>
 		<typeahead-search @setq='onSetQ($event)' @cancel='entering_wd_q=false'></typeahead-search>
 	</div>
-	<div v-else-if='hasManualMatch()' class='entry_row' v-for='m in getManualMatches()'>
-		{{m}}
+	<div v-else-if='hasManualMatch()' class='entry_row' v-for='match in getManualMatches()'>
+		<div class='entry_col1'>
+			<wd-link :wd='wdwd' :item='match'></wd-link>
+		</div>
+		<div class='entry_col2'>
+			<span v-if='typeof getWDitem(match)!="undefined"'>
+				{{getWDitem(match).getDesc()}}
+			</span>
+		</div>
+		<div class='entry_col3'>
+			Remove
+		</div>
 	</div>
 	<div v-else-if='isUnmatched()' class='entry_row'>
 		<div class='entry_col12'>
@@ -110,43 +121,31 @@ Vue.component ( 'entry' , {
         let me = this ;
         me.i = wd.getItem ( me.q ) ;
         if ( typeof me.i == 'undefined' ) return ;
-        me.is_loaded = true ;
+
+        let to_load = [] ;
+        $.each ( me.getManualMatches() , function ( k , v ) { to_load.push(v) } ) ;
+        $.each ( me.getAutoMatches() , function ( k , v ) { to_load.push(v) } ) ;
+        wdwd.getItemBatch ( to_load , function () {
+	        me.is_loaded = true ;
+        } ) ;
     } ,
     updated : function () { tt.updateInterface(this.$el) } ,
     mounted : function () { tt.updateInterface(this.$el) } ,
     methods : {
-    	getLabel : function () {
-    		return this.i.getLabel().replace(/_/g,' ').replace(/\s+/g,' ') ;
-    	} ,
-    	getExtUrl : function () {
-    		return this.i.getFirstStringForProperty(_props.ext_url) ;
-    	} ,
-    	hasManualMatch : function () {
-    		return this.i.hasClaims(_props.manual) ;
-    	} ,
-    	hasAutoMatch : function () {
-    		return this.i.hasClaims(_props.auto) ;
-    	} ,
-    	isNA : function () {
-    		return this.i.hasClaims(_props.na) ;
-    	} ,
-    	isUnmatched : function () {
-    		return !(this.hasManualMatch()||this.hasAutoMatch()||this.isNA()) ;
-    	} ,
-    	getWikidataSearchString : function () {
-    		return this.i.getLabel() ; // TODO
-    	} ,
-    	getWikipediaSearchString : function () {
-    		return this.i.getLabel() ; // TODO
-    	} ,
-    	getGoogleSearchString : function () {
-    		return this.i.getLabel() ; // TODO
-    	} ,
-    	getManualMatches : function () {
-    		return this.i.getClaimItemsForProperty(_props.manual,true);
-    	} ,
+    	getLabel : function () { return this.i.getLabel().replace(/_/g,' ').replace(/\s+/g,' ') } ,
+    	getExtUrl : function () { return this.i.getFirstStringForProperty(_props.ext_url) } ,
+    	hasManualMatch : function () { return this.i.hasClaims(_props.manual) } ,
+    	hasAutoMatch : function () { return this.i.hasClaims(_props.auto) } ,
+    	isNA : function () { return this.i.hasClaims(_props.na) } ,
+    	isUnmatched : function () { return !(this.hasManualMatch()||this.hasAutoMatch()||this.isNA()) } ,
+    	getWikidataSearchString : function () { return this.i.getLabel() } , // TODO
+    	getWikipediaSearchString : function () { return this.i.getLabel() } , // TODO
+    	getGoogleSearchString : function () { return this.i.getLabel() } , // TODO
+    	getManualMatches : function () { return this.i.getStringsForProperty(_props.manual) } ,
+    	getAutoMatches : function () { return this.i.getStringsForProperty(_props.auto) } ,
+    	getWDitem : function ( q ) { return wdwd.getItem(q) } ,
     	onSetUserQ : function () {
-    			this.entering_wd_q = true ;
+   			this.entering_wd_q = true ;
     	} ,
     	onSetQ : function ( event ) {
     		console.log ( JSON.parse(JSON.stringify(event)) ) ;
