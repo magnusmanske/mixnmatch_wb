@@ -19,9 +19,7 @@ div.card {
                 </template>
         </tool-navbar>
         <div v-if='loaded'>
-            <p class='lead'>
-                <h1>{{i.getLabel()}}</h1>
-            </p>
+            <catalog-header :catalog_q='catalog_q' nolink='1'></catalog-header>
             <div class='card'>
                 <div class="card-header">
                     <h5 class='card-title' tt="entries"></h5>

@@ -1,0 +1,55 @@
+<template id='catalog-dropdown-template'>
+<div v-if='is_loaded' class="btn-group">
+    <button type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" class="btn btn-outline-primary dropdown-toggle">Action</button> 
+    <div class="dropdown-menu dropdown-menu-right"  x-placement="top-end">
+        <router-link :to="'/list/manual/'+catalog_q" class="dropdown-item" tt="manually_matched" style="padding: 2px;"></router-link> 
+        <router-link :to="'/list/auto/'+catalog_q" class="dropdown-item" tt="auto_matched" style="padding: 2px;"></router-link> 
+        <router-link :to="'/list/unmatched/'+catalog_q" class="dropdown-item" tt="unmatched" style="padding: 2px;"></router-link> 
+<!--        <a href="#/list/1807/multi_match" class="dropdown-item" tt="multi_match" style="padding: 2px;"></a> 
+        <a href="#/list/1807/nowd" class="dropdown-item" tt="no_wikidata" style="padding: 2px;"></a> -->
+        <router-link :to="'/list/na/'+catalog_q" class="dropdown-item" tt="not_applicable" style="padding: 2px;"></router-link> 
+
+        <div class="dropdown-divider"></div>
+<!--
+        <a href="#/site_stats/1807" class="dropdown-item" tt="site_stats" style="padding: 2px;">Site stats</a> 
+        <a href="#/download/1807" class="dropdown-item" tt="download" style="padding: 2px; font-weight: bold;">Download</a> 
+        <a href="#/random/1807" class="dropdown-item" tt="game_mode" style="padding: 2px; font-weight: bold;">Game mode</a> 
+        <a href="#/rc/1807" class="dropdown-item" tt="rc_for_catalog" style="padding: 2px;">Recent Changes in this catalog</a> 
+        <a href="#/search/?include=1807" class="dropdown-item" tt="search_this_catalog" style="padding: 2px;">Search only in this catalog</a> 
+        <a href="#/sync/1807" class="dropdown-item" tt="sync_catalog" style="padding: 2px;">Manually sync catalog</a> 
+        <a href="#/catalog_editor/1807" class="dropdown-item" tt="catalog_editor" style="padding: 2px;">Catalog editor</a> 
+        <a target="_blank" href="./mobile_game.html?catalog=1807" tt="mobile_game" class="dropdown-item external" style="padding: 2px;">Mobile game</a> 
+        <a target="_blank" href="./visual_match.html#catalog=1807" tt="visual_tool" class="dropdown-item external" style="padding: 2px;">Visual tool</a> 
+        <a target="_blank" href="https://tools.wmflabs.org/fist/wdfist/?depth=3&amp;language=en&amp;project=wikipedia&amp;sparql=SELECT%20?item%20WHERE%20{%20?item%20wdt:P5936%20[]}&amp;no_images_only=1&amp;remove_used=1&amp;remove_multiple=1&amp;prefilled=1" tt="find_images" class="dropdown-item external" style="padding: 2px;">Find images</a> 
+        <a target="_blank" href="https://tools.wmflabs.org/wikidata-todo/sparql_rc.php?sparql=SELECT+%3Fq+WHERE+%7B+%3Fq+wdt%3AP5936+%5B%5D+%7D&amp;start=last+week&amp;end=" tt="changes_last_week" class="dropdown-item external" style="padding: 2px;">Changes last week</a> 
+        <a target="_blank" href="https://www.wikidata.org/wiki/User:Magnus_Manske/Mix%27n%27match_report/1807" tt="catalog_report" class="dropdown-item wikidata" style="padding: 2px;">Catalog report</a> 
+-->
+        <a v-if='getProperty()!=""' target="_blank" :href="'https://www.wikidata.org/wiki/Property:'+getProperty()" class="dropdown-item wikidata" style="padding: 2px;">{{getProperty()}}</a>
+    </div>
+</div>
+</template>
+
+
+<script>
+'use strict';
+
+Vue.component ( 'catalog-dropdown' , {
+    props : [ 'catalog_q' ] ,
+    data : function () { return { is_loaded:false , i:{} } } ,
+    created : function () {
+        let me = this ;
+        wd.getItemBatch ( [me.catalog_q] , function () {
+	        me.i = wd.getItem ( me.catalog_q ) ;
+	        if ( typeof me.i == 'undefined' ) return ;
+	        me.is_loaded = true ;
+	    } ) ;
+    } ,
+    updated : function () { tt.updateInterface(this.$el) } ,
+    mounted : function () { tt.updateInterface(this.$el) } ,
+    methods : {
+        getProperty : function () { return this.i.getFirstStringForProperty(_props.wd_prop) }
+    } ,
+    template : '#catalog-dropdown-template'
+} ) ;
+// style="padding: 2px; position: absolute; transform: translate3d(-150px, -76px, 0px); top: 0px; left: 0px; will-change: transform;"
+</script>

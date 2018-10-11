@@ -2,15 +2,20 @@
 	"props":{
 	    "isa" : "P2" ,
 	    "catalog" : "P3" ,
+	    "ext_id" : "P4" ,
 	    "ext_url" : "P6" ,
+	    "wd_prop" : "P5" ,
 	    "manual" : "P9" ,
 	    "auto" : "P10" ,
 	    "na" : "P11" ,
 	    "type_q" : "P7",
 	    "matched_by" : "P12" ,
-	    "matched_on" : "P13"
+	    "matched_on" : "P13" ,
+	    "catalog_url" : "P14"
 	} ,
 	"items":{
 		"catalog" : "Q2" 
-	}
+	} ,
+	"sparql_url" : "https://mixnmatch-query.wmflabs.org/proxy/wdqs/bigdata/namespace/wdq/sparql" ,
+	"mwapi" : "http://mixnmatch.wmflabs.org/w/api.php"
 }

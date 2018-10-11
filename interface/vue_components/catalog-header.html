@@ -1,0 +1,45 @@
+<template id='catalog-header-template'>
+<div v-if='is_loaded'>
+    <p class='lead'>
+        <h1>
+        	<div  style="float: right;">
+        		<catalog-dropdown :catalog_q='catalog_q'></catalog-dropdown>
+        	</div>
+        	<span v-if='nolink'>{{i.getLabel()}}</span>
+        	<router-link v-else :to="'/catalog/'+catalog_q">{{i.getLabel()}}</router-link>
+        </h1>
+        <div>
+        	<a target='_blank' class='external' :href='getURL()'>
+        		<span v-if='i.getDesc()!=""'>{{i.getDesc()}}</span>
+        		<span v-else>{{getURL()}}</span>
+        	</a>
+        	<span v-else-if='i.getDesc()!=""'>{{i.getDesc()}}</span>
+        </div>
+    </p>
+</div>
+</template>
+
+
+<script>
+'use strict';
+
+Vue.component ( 'catalog-header' , {
+    props : [ 'catalog_q' , 'nolink' ] ,
+    data : function () { return { is_loaded:false , i:{} } } ,
+    created : function () {
+        let me = this ;
+        wd.getItemBatch ( [me.catalog_q] , function () {
+	        me.i = wd.getItem ( me.catalog_q ) ;
+	        if ( typeof me.i == 'undefined' ) return ;
+	        me.is_loaded = true ;
+	    } ) ;
+    } ,
+    updated : function () { tt.updateInterface(this.$el) } ,
+    mounted : function () { tt.updateInterface(this.$el) } ,
+    methods : {
+    	hasURL : function () { return this.i.hasClaims(_props.catalog_url) } ,
+    	getURL : function () { return this.i.getFirstStringForProperty(_props.catalog_url) } ,
+    } ,
+    template : '#catalog-header-template'
+} ) ;
+</script>

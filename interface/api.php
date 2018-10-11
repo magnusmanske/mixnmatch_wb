@@ -2,15 +2,17 @@
 
 header('Content-Type: application/json');
 
+require_once ( 'mixnmatch.php' ) ;
+
+$mnm = new MixnMatch () ;
+
 # SPARQL proxy
 if ( isset($_REQUEST['query']) ) {
-	$url = 'https://mixnmatch-query.wmflabs.org/proxy/wdqs/bigdata/namespace/wdq/sparql?format=json&query=' . urlencode($_REQUEST['query']) ;
+	$url = $mnm->config->sparql_url . '?format=json&query=' . urlencode($_REQUEST['query']) ;
 	print file_get_contents ( $url ) ;
 	exit(0);
 }
 
-
-require_once ( 'mixnmatch.php' ) ;
 
 $out = [ 'status' => 'OK' ] ;
 
