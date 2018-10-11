@@ -13,71 +13,71 @@ div.card {
 </style>
 
 <template id='catalog-page-template'>
-	<div class='container'>
-		<tool-navbar>
-                <template slot='right'>
-                </template>
-        </tool-navbar>
-        <div v-if='loaded'>
-            <catalog-header :catalog_q='catalog_q' nolink='1'></catalog-header>
-            <div class='card'>
-                <div class="card-header">
-                    <h5 class='card-title' tt="entries"></h5>
-                </div>
-                <div class="card-body">
-                    <table class='table table-sm'>
-                        <tbody>
-                            <tr v-for='s in stats_rows'>
-                                <td nowrap>
-                                    <router-link :tt='s.tt' :to="'/list/'+s.key+'/'+catalog_q"></router-link>
-                                </td>
-                                <td class='numeric'>
-                                    {{stats[s.key]}}
-                                </td>
-                                <td style='width:100%'>
-                                    <div class="progress">
-                                        <div :class="'progress-bar '+s.class" role="progressbar" :style="'width:'+(100*stats[s.key]/stats.total)+'%'">
-                                            {{(Math.round(1000*stats[s.key]/stats.total)/10)+'%'}}
-                                        </div>
+<div class='container'>
+	<tool-navbar>
+            <template slot='right'>
+            </template>
+    </tool-navbar>
+    <div v-if='loaded'>
+        <catalog-header :catalog_q='catalog_q' nolink='1'></catalog-header>
+        <div class='card'>
+            <div class="card-header">
+                <h5 class='card-title' tt="entries"></h5>
+            </div>
+            <div class="card-body">
+                <table class='table table-sm'>
+                    <tbody>
+                        <tr v-for='s in stats_rows'>
+                            <td nowrap>
+                                <router-link :tt='s.tt' :to="'/list/'+s.key+'/'+catalog_q"></router-link>
+                            </td>
+                            <td class='numeric'>
+                                {{stats[s.key]}}
+                            </td>
+                            <td style='width:100%'>
+                                <div class="progress">
+                                    <div :class="'progress-bar '+s.class" role="progressbar" :style="'width:'+(100*stats[s.key]/stats.total)+'%'">
+                                        {{(Math.round(1000*stats[s.key]/stats.total)/10)+'%'}}
                                     </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td tt='total'>
-                                </td>
-                                <td class='numeric'>
-                                    <b>{{stats.total}}</b>
-                                </td>
-                                <td/>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class='card'>
-                <div class="card-header">
-                    <h5 class='card-title' tt="entry_types"></h5>
-                </div>
-                <div class="card-body">
-                    <table class='table table-sm table-striped'>
-                        <tbody>
-                            <tr v-for='t in types'>
-                                <td style='width:100%'>
-                                    <wd-link :item='t.q' :wd='wdwd'></wd-link>
-                                </td>
-                                <td class='numeric'>
-                                    {{t.cnt}}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td tt='total'>
+                            </td>
+                            <td class='numeric'>
+                                <b>{{stats.total}}</b>
+                            </td>
+                            <td/>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
-        <div v-else>
-            <i>Loading...</i>
+        <div class='card'>
+            <div class="card-header">
+                <h5 class='card-title' tt="entry_types"></h5>
+            </div>
+            <div class="card-body">
+                <table class='table table-sm table-striped'>
+                    <tbody>
+                        <tr v-for='t in types'>
+                            <td style='width:100%'>
+                                <wd-link :item='t.q' :wd='wdwd'></wd-link>
+                            </td>
+                            <td class='numeric'>
+                                {{t.cnt}}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-	</div>
+    </div>
+    <div v-else>
+        <i>Loading...</i>
+    </div>
+</div>
 </template>
 
 <script>

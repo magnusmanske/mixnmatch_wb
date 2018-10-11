@@ -1,0 +1,123 @@
+<style>
+div.card-header {
+    padding:5px;
+}
+div.card {
+    margin-bottom:1rem;
+}
+table.entry_table tbody th {
+    white-space:nowrap;
+}
+table.entry_table tbody td {
+    width:100%;
+}
+</style>
+
+<template id='entry-page-template'>
+<div class='container' :key='q'>
+	<tool-navbar>
+            <template slot='right'>
+            </template>
+    </tool-navbar>
+    <div v-if='is_loaded'>
+        <catalog-header v-if='typeof ic!="undefined" && catalog_q!=""' :catalog_q='catalog_q'></catalog-header>
+
+        <div class='card'>
+            <div class="card-header">
+                <h5 class='card-title'>
+                    {{i.getLabel()}}
+                    <span style='font-size:11pt'>[<a target='_blank' class='wikidata' :href="'/wiki/Item:'+q">{{q}}</a>]</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class='table table-bordered entry_table'>
+                    <tbody>
+                        <tr>
+                            <th tt='entry'></th>
+                            <td><a target='_blank' class='wikidata' :href="'/wiki/Item:'+q">{{q}}</a></td>
+                        </tr>
+                        <tr>
+                            <th tt='external_id2'></th>
+                            <td>{{getStringProp('ext_id')}}</td>
+                        </tr>
+                        <tr>
+                            <th tt='col_exturl'></th>
+                            <td>
+                                <a target='_blank' class='external' :href="getStringProp('ext_url')">
+                                    {{getStringProp('ext_url')}}
+                                </a>
+                            </td>
+                        </tr>
+                        <tr v-for="c in getClaims('manual')">
+                            <th tt='manually_matched'></th>
+                            <td>
+                                <div><wd-link :item='i.getClaimTargetString(c)'></wd-link></div>
+                                <div v-html='getMatchedByOn(c)'>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div v-else>
+        <i>Loading...</i>
+    </div>
+</div>
+</template>
+
+<script>
+'use strict';
+
+let EntryPage = Vue.extend ( {
+    props : [ 'q' ] ,
+    data : function () { return { is_loaded:false , i:{} , catalog_q:'' , ic:{} } } ,
+    created : function () {
+        let me = this ;
+        me.is_loaded = false ;
+        wd.getItemBatch([me.q],function(){
+            me.i = wd.getItem(me.q) ;
+            if ( typeof me.i == 'undefined' ) return ;
+            if ( !me.i.hasClaims(_props.catalog) ) { // No catalog?
+                me.is_loaded = true ;
+                return ;
+            }
+            me.catalog_q = (me.i.getClaimItemsForProperty(_props.catalog,true))[0] ;
+            wd.getItemBatch([me.catalog_q],function(){
+                me.ic = wd.getItem(me.catalog_q) ;
+                me.is_loaded = true ;
+            } ) ;
+        }) ;
+    } ,
+    updated : function () { tt.updateInterface(this.$el) ; } ,
+    mounted : function () { tt.updateInterface(this.$el) ; } ,
+    methods : {
+        getStringProp : function ( key ) {
+            return this.i.getFirstStringForProperty ( _props[key] ) ;
+        } ,
+        getClaims : function ( key ) {
+            return this.i.getClaimsForProperty(_props[key]) ;
+        } ,
+        getMatchedByOn : function ( c ) {
+            let me = this ;
+            if ( typeof c.qualifiers == 'undefined' ) return '' ;
+            let user = (typeof c.qualifiers[_props['matched_by']]=='undefined') ? '' : c.qualifiers[_props['matched_by']][0].datavalue.value ;
+            let date = (typeof c.qualifiers[_props['matched_on']]=='undefined') ? '' : c.qualifiers[_props['matched_on']][0].datavalue.value.time.replace(/^\D*([0-9-]+).*$/,'$1') ;
+            if ( user=='' && date=='' ) return '' ;
+            let ret = 'Matched' ;
+            if ( user != '' ) {
+                if ( /^Mix'n'match /.test(user) ) {
+                    user = '<i>' + user + '</i>' ;
+                } else {
+                    user = "<a href='https://www.wikidata.org/wiki/User:"+encodeURIComponent(user).replace(/'/g,'&apos;')+"' target='_blank' class='wikidata'>" + user + "</a>" ;
+                }
+                ret += ' by <tt>' + user + '</tt>' ;
+            }
+            if ( date != '' ) ret += ' on ' + date ;
+            return ret ;
+        }
+    },
+    template:'#entry-page-template'
+} ) ;
+</script>

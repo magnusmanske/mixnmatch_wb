@@ -21,6 +21,7 @@ $(document).ready ( function () {
                 'vue_components/main-page.html',
                 'vue_components/catalog-page.html',
                 'vue_components/list-page.html',
+                'vue_components/entry-page.html',
                 ] ) ,
             new Promise(function(resolve, reject) {
                 $.get ( './config.json' , function ( d ) {
@@ -36,6 +37,7 @@ $(document).ready ( function () {
 
         const routes = [
             { path: '/', component: MainPage , props:true },
+            { path: '/entry/:q', component: EntryPage , props:true },
             { path: '/catalog/:catalog_q', component: CatalogPage , props:true },
             { path: '/list/:mode/:catalog_q', component: ListPage , props:true },
             { path: '/list/:mode/:catalog_q/:page', component: ListPage , props:true },
