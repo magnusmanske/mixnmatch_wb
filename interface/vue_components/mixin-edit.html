@@ -1,22 +1,41 @@
 <script>
 
 var editMixin = {
-    data : function () { return {} } ,
+    data : function () { return { tool_hashtag:'mix-n-match' } } ,
 	created : function () {
 	} ,
 	methods : {
 		onCreateMatch : function ( q , wdq , callback ) {
 			let me = this ;
-			let user = widar.getUserName() ;
-			console.log ( 'ADD' , q , wdq ) ;
 
-			let now = new Date(Date.now()) ;
-			let data = { claims:[ widar.newClaimString(_props.manual,wdq) ] } ;
-			data.claims[0].qualifiers = {} ;
-			data.claims[0].qualifiers[_props.matched_by] = [ widar.newClaimString(_props.matched_by,widar.getUserName()).mainsnak ] ;
-			data.claims[0].qualifiers[_props.matched_on] = [ widar.newClaimDate(_props.matched_on,now.toISOString().substr(0,10)).mainsnak ] ;
-			console.log ( data ) ;
-			me.editEntity ( q , data , callback ) ;
+			Promise.all ( [
+				new Promise(function(resolve, reject) { // Edit in Mix'n'match
+					let now = new Date(Date.now()) ;
+					let data = { claims:[ widar.newClaimString(_props.manual,wdq) ] } ;
+					data.claims[0].qualifiers = {} ;
+					data.claims[0].qualifiers[_props.matched_by] = [ widar.newClaimString(_props.matched_by,widar.getUserName()).mainsnak ] ;
+					data.claims[0].qualifiers[_props.matched_on] = [ widar.newClaimDate(_props.matched_on,now.toISOString().substr(0,10)).mainsnak ] ;
+					me.editEntity ( q , data , resolve ) ;
+				} ) ,
+				new Promise(function(resolve, reject) { // Edit in Wikidata
+					wd.getItemBatch ( [q] , function () {
+						let i = wd.getItem ( q ) ;
+						if ( typeof i == 'undefined' || !i.hasClaims(_props.catalog) || !i.hasClaims(_props.ext_id) ) return resolve() ; // No catalog, no WD edit
+						let catalog_q = i.getClaimItemsForProperty(_props.catalog,true)[0] ;
+						let ext_id = i.getFirstStringForProperty(_props.ext_id) ;
+						wd.getItemBatch ( [catalog_q] , function () {
+							let ci = wd.getItem ( catalog_q ) ;
+							if ( typeof ci == 'undefined' || !ci.hasClaims(_props.wd_prop) ) return resolve() ; // No info in catalog, no WD edit
+							let wd_prop = ci.getFirstStringForProperty(_props.wd_prop) ;
+							let summary = '' ; // TODO
+							let claim = widar.newClaimString ( wd_prop , ext_id ) ;
+							widar.addClaimToItem ( wdq , claim , summary , me.tool_hashtag , resolve ) ;
+						} ) ;
+					} ) ;
+				} )
+		    ] ) .then ( () => {
+				me.reloadItem ( q , callback ) ;
+		    } ) ;
 
 		} ,
 		onRemoveMatch : function ( q , wdq , callback ) {
@@ -28,7 +47,6 @@ var editMixin = {
 		editEntity : function ( q , data , callback ) {
 			let me = this ;
 			me.getEditToken ( function ( token ) {
-				console.log ( token ) ;
 				$.post ( '/w/api.php' , {
 					action:'wbeditentity',
 					id:q,
@@ -37,8 +55,7 @@ var editMixin = {
 					data:JSON.stringify(data),
 					format:'json'
 				} , function ( d ) {
-					console.log ( d ) ;
-					me.reloadItem ( q , callback ) ;
+					if ( typeof callback != 'undefined' ) callback() ;
 				} , 'json' ) ;
 			} ) ;
 		} ,
