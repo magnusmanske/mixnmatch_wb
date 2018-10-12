@@ -6,9 +6,15 @@ a.remove_user_q { color:#b32424; }
 div.entry_block {
 	width:100%;
 	display:flex;
-	flex-direction:column;
+	flex-direction:row;
 	padding-left:1px;
 	font-size:11pt;
+}
+div.entry_block_rows {
+	width:100%;
+	display:flex;
+	flex-direction:column;
+	flex-grow:1;
 }
 div.entry_block:nth-child(even) {background: #FFF}
 div.entry_block:nth-child(odd) {background: #eaecf0}
@@ -45,115 +51,120 @@ div.entry_col12 {
 <template id='entry-template'>
 <div v-if='is_loaded && widar.loaded' class='entry_block'>
 
-	<!-- Row 1 -->
-	<div class='entry_row' :key="'entry_row1_'+q">
-		<div class='entry_col1'>
-			<router-link :to="'/entry/'+q">#</router-link>
-			<a v-if='getExtUrl()!=""' class='external' :href='getExtUrl()' target='_blank'>
-				{{getLabel()}}
-			</a>
-			<span v-else>
-				{{getLabel()}}
-			</span>
-		</div>
-		<div class='entry_col2'>
-			{{i.getDesc()}}
-		</div>
-		<div class='entry_col3' v-if='isLoggedIn()'>
-			<div v-if='hasManualMatch()'>
-			</div>
-			<div v-else-if='hasAutoMatch()'>
-			</div>
-			<div v-else-if='isNA()' v-for='c in [getNAclaims()[0]]'>
-				<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
-			</div>
-			<div v-else>
-				<i tt='not_matched'></i>
-			</div>
-		</div>
-		<div class='entry_col3' v-else tt='log_into_widar'></div>
-	</div>
+	<div><slot name='left'></slot></div>
+	<div class='entry_block_rows'>
 
-	<!-- Row 2 -->
-	<div v-if='entering_wd_q' class='entry_row' :key="'entry_row2_'+q">
-		<div style='width:50%;margin-right:5rem;'>
-			<typeahead-search :wd='wdwd' :initial='getWikidataSearchString()' @setq='onSetQ($event)' @cancel='entering_wd_q=false' style='width:100%' :fulltext='use_fulltext'></typeahead-search>
-		</div>
-		<div style='margin-top:0.5rem'>
-			<label>
-				<input type='checkbox' v-model='use_fulltext' />
-				<span tt='use_fulltext'></span>
-			</label>
-		</div>
-		<div style='margin:3px;margin-left:auto;'>
-			<button class='btn btn-outline-danger' @click.prevent='entering_wd_q=false'>&times;</button>
-		</div>
-	</div>
-	<div v-else-if='hasManualMatch()' class='entry_row' v-for='c in getManualMatches()'>
-		<div class='entry_col1'>
-			<wd-link :wd='wdwd' :item='i.getClaimTargetString(c)'></wd-link>
-		</div>
-		<div class='entry_col2'>
-			<span v-if='typeof getWDitem(i.getClaimTargetString(c))!="undefined"'>
-				{{getWDitem(i.getClaimTargetString(c)).getDesc()}}
-			</span>
-		</div>
-		<div class='entry_col3'>
-			<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
-			<div v-if='isLoggedIn()'>
-				<a href='#' class='remove_user_q' @click.prevent='onRemoveMatch(q,i.getClaimTargetString(c),forceUpdate)' tt='remove'></a>
+		<!-- Row 1 -->
+		<div class='entry_row' :key="'entry_row1_'+q">
+			<div class='entry_col1'>
+				<router-link :to="'/entry/'+q" tt_title='t_entry_link'>#</router-link><a target='_blank' class='mixnmatch_wb' :href="'/wiki/Item:'+q" tt_title='t_entry_item'>Q</a>
+				<a v-if='getExtUrl()!=""' class='external' :href='getExtUrl()' target='_blank'>
+					{{getLabel()}}
+				</a>
+				<span v-else>
+					{{getLabel()}}
+				</span>
 			</div>
-			<div v-else tt='log_into_widar'></div>
-		</div>
-	</div>
-	<div v-else-if='isNA()' class='entry_row'>
-		<div class='entry_col12'><i tt='not_applicable'></i></div>
-		<div class='entry_col3' v-for='c in [getNAclaims()[0]]'>
-			<div v-if='isLoggedIn()'>
-				<a href='#' class='remove_user_q' @click.prevent='onRemoveNA(q,forceUpdate)' tt='remove'></a>
+			<div class='entry_col2'>
+				{{i.getDesc()}}
 			</div>
-			<div v-else tt='log_into_widar'></div>
+			<div class='entry_col3' v-if='isLoggedIn()'>
+				<div v-if='hasManualMatch()'>
+				</div>
+				<div v-else-if='hasAutoMatch()'>
+				</div>
+				<div v-else-if='isNA()' v-for='c in [getNAclaims()[0]]'>
+					<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
+				</div>
+				<div v-else>
+					<i tt='not_matched'></i>
+				</div>
+			</div>
+			<div class='entry_col3' v-else tt='log_into_widar'></div>
+		</div>
+
+		<!-- Row 2 -->
+		<div v-if='entering_wd_q' class='entry_row' :key="'entry_row2_'+q">
+			<div style='width:50%;margin-right:5rem;'>
+				<typeahead-search :wd='wdwd' :initial='getWikidataSearchString()' @setq='onSetQ($event)' @cancel='entering_wd_q=false' style='width:100%' :fulltext='use_fulltext'></typeahead-search>
+			</div>
+			<div style='margin-top:0.5rem'>
+				<label>
+					<input type='checkbox' v-model='use_fulltext' />
+					<span tt='use_fulltext'></span>
+				</label>
+			</div>
+			<div style='margin:3px;margin-left:auto;'>
+				<button class='btn btn-outline-danger' @click.prevent='entering_wd_q=false'>&times;</button>
+			</div>
+		</div>
+		<div v-else-if='hasManualMatch()' class='entry_row' v-for='c in getManualMatches()'>
+			<div class='entry_col1'>
+				<wd-link :wd='wdwd' :item='i.getClaimTargetString(c)' smallq='1'></wd-link>
+			</div>
+			<div class='entry_col2'>
+				<span v-if='typeof getWDitem(i.getClaimTargetString(c))!="undefined"'>
+					{{getWDitem(i.getClaimTargetString(c)).getDesc()}}
+				</span>
+			</div>
+			<div class='entry_col3'>
+				<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
+				<div v-if='isLoggedIn()'>
+					<a href='#' class='remove_user_q' @click.prevent='onRemoveMatch(q,i.getClaimTargetString(c),forceUpdate)' tt='remove'></a>
+				</div>
+				<div v-else tt='log_into_widar'></div>
+			</div>
+		</div>
+		<div v-else-if='isNA()' class='entry_row'>
+			<div class='entry_col12'><i tt='not_applicable'></i></div>
+			<div class='entry_col3' v-for='c in [getNAclaims()[0]]'>
+				<div v-if='isLoggedIn()'>
+					<a href='#' class='remove_user_q' @click.prevent='onRemoveNA(q,forceUpdate)' tt='remove'></a>
+				</div>
+				<div v-else tt='log_into_widar'></div>
+			</div>
+		</div>
+		<div v-else-if='isUnmatched()' class='entry_row'>
+			<div class='entry_col12'>
+				<a class='wikidata' target='_blank' tt='search_wd' :href='"https://www.wikidata.org/w/index.php?button=&title=Special%3ASearch&search="+encodeURIComponent(getWikidataSearchString())'></a>
+	<!--			<a class='external' target='_blank' tt='search_wikipedia' :href='getWikipediaSearchString()'></a>-->
+				|
+				<a class='external' target='_blank' tt='google_wikipedia' :href='"https://www.google.com/#q=site%3Awikipedia.org+"+encodeURIComponent(getWikidataSearchString())'></a>
+				|
+				<a class='external' target='_blank' tt='google_wikidata' :href='"https://www.google.com/#q=site%3Awikidata.org+"+encodeURIComponent(getWikidataSearchString())'></a>
+			</div>
+			<div class='entry_col3' v-if='isLoggedIn()'>
+				<a href='#' class='set_user_q' @click.prevent='onSetUserQ' tt='set_q'></a>
+				|
+				<a href='#' class='new_item' @click.prevent='onCreateNewItem(q,forceUpdate)' tt='new_item'></a>
+				|
+				<a href='#' class='set_na' @click.prevent='onSetNA(q,forceUpdate)' tt='n_a'></a>
+			</div>
+			<div class='entry_col3' v-else tt='log_into_widar'></div>
+		</div>
+		<div v-else-if='hasAutoMatch()' class='entry_row' v-for='match in getAutoMatches()'>
+			<div class='entry_col12' style='display:flex;flex-direction:row;'>
+				<div><wd-link :wd='wdwd' :item='match' smallq='true'></wd-link></div>
+				<div>{{getWDitem(match).getDesc()}}</div>
+			</div>
+			<div class='entry_col3' v-if='isLoggedIn()'>
+				<a href='#' class='set_user_q' @click.prevent='onSetQFromAuto(match)' tt='set_q'></a>
+			</div>
+			<div class='entry_col3' v-else tt='log_into_widar'></div>
+		</div>
+		<div v-else class='entry_row'>
+			<div class='entry_col1'>
+				Not
+			</div>
+			<div class='entry_col2'>
+				sure what this
+			</div>
+			<div class='entry_col3'>
+				is
+			</div>
 		</div>
 	</div>
-	<div v-else-if='isUnmatched()' class='entry_row'>
-		<div class='entry_col12'>
-			<a class='wikidata' target='_blank' tt='search_wd' :href='"https://www.wikidata.org/w/index.php?button=&title=Special%3ASearch&search="+encodeURIComponent(getWikidataSearchString())'></a>
-<!--			<a class='external' target='_blank' tt='search_wikipedia' :href='getWikipediaSearchString()'></a>-->
-			|
-			<a class='external' target='_blank' tt='google_wikipedia' :href='"https://www.google.com/#q=site%3Awikipedia.org+"+encodeURIComponent(getWikidataSearchString())'></a>
-			|
-			<a class='external' target='_blank' tt='google_wikidata' :href='"https://www.google.com/#q=site%3Awikidata.org+"+encodeURIComponent(getWikidataSearchString())'></a>
-		</div>
-		<div class='entry_col3' v-if='isLoggedIn()'>
-			<a href='#' class='set_user_q' @click.prevent='onSetUserQ' tt='set_q'></a>
-			|
-			<a href='#' class='new_item' @click.prevent='onCreateNewItem(q,forceUpdate)' tt='new_item'></a>
-			|
-			<a href='#' class='set_na' @click.prevent='onSetNA(q,forceUpdate)' tt='n_a'></a>
-		</div>
-		<div class='entry_col3' v-else tt='log_into_widar'></div>
-	</div>
-	<div v-else-if='hasAutoMatch()' class='entry_row' v-for='match in getAutoMatches()'>
-		<div class='entry_col12' style='display:flex;flex-direction:row;'>
-			<div><wd-link :wd='wdwd' :item='match' smallq='true'></wd-link></div>
-			<div>{{getWDitem(match).getDesc()}}</div>
-		</div>
-		<div class='entry_col3' v-if='isLoggedIn()'>
-			<a href='#' class='set_user_q' @click.prevent='onSetQFromAuto(match)' tt='set_q'></a>
-		</div>
-		<div class='entry_col3' v-else tt='log_into_widar'></div>
-	</div>
-	<div v-else class='entry_row'>
-		<div class='entry_col1'>
-			Not
-		</div>
-		<div class='entry_col2'>
-			sure what this
-		</div>
-		<div class='entry_col3'>
-			is
-		</div>
-	</div>
+	<div><slot name='right'></slot></div>
 </div>
 </template>
 

@@ -41,6 +41,7 @@ $(document).ready ( function () {
             { path: '/', component: MainPage , props:true },
             { path: '/entry/:q', component: EntryPage , props:true },
             { path: '/catalog/:catalog_q', component: CatalogPage , props:true },
+            { path: '/rc', component: RecentChangesPage , props:true },
             { path: '/rc/:catalog_q', component: RecentChangesPage , props:true },
             { path: '/list/:mode/:catalog_q', component: ListPage , props:true },
             { path: '/list/:mode/:catalog_q/:page', component: ListPage , props:true },

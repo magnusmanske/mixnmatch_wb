@@ -5,6 +5,14 @@ div.card-header {
 div.card {
     margin-bottom:1rem;
 }
+div.rc_entry_left {
+    margin-right:0.5rem;
+    padding-right:2px;
+    border-right:1px dotted rgb(221, 221, 221);
+    white-space:nowrap;
+    font-size:10pt;
+    height:100%;
+}
 </style>
 
 <template id='recent-changes-page-template'>
@@ -15,10 +23,22 @@ div.card {
             </template>
     </tool-navbar>
     <div v-if='loaded'>
-        <catalog-header :catalog_q='catalog_q'></catalog-header>
+        <catalog-header v-if="typeof catalog_q!='undefined'" :catalog_q='catalog_q'></catalog-header>
         <div>
-            <entry v-for='entry in entries' :q='entry.q' :key='entry.q'></entry>
-            {{entries}}
+            <entry v-for='entry in entries' :q='entry.q' :key='entry.q'>
+                <template slot='left'>
+                    <div class='rc_entry_left'>
+                        <div v-if="typeof entry.catalog_q!='undefined'">
+                            <router-link :to="'/catalog/'+entry.catalog_q">
+                                <wd-link :item='entry.catalog_q' as_text='1'></wd-link>
+                            </router-link>
+                        </div>
+                        <div>
+                            {{entry.ts.replace(/[TZ]/g,' ').replace(/\s*00:00:00\s*$/,'')}}
+                        </div>
+                    </div>
+                </template>
+            </entry>
         </div>
     </div>
     <div v-else>
@@ -38,17 +58,25 @@ let RecentChangesPage = Vue.extend ( {
         me.loaded = false ;
         Promise.all ( [
             new Promise(function(resolve, reject) { // stats.auto
-                wd.loadSPARQL ( 
-                    'SELECT ?q ?d { ?q wdt:'+_props.catalog+' wd:'+me.catalog_q+' ; schema:dateModified ?d } ORDER BY DESC(?d) LIMIT 50' ,
-                    function ( d ) {
-                        let to_load = [] ;
-                        $.each ( d.results.bindings , function ( dummy , b ) {
-                            let q = b.q.value.replace(/^.+\//,'') ;
-                            me.entries.push ( { q:q , ts:b.d.value } ) ;
-                            to_load.push ( q ) ;
-                        } ) ;
-                        wd.getItemBatch ( to_load , resolve ) ;
-                    } )
+                let query = 'SELECT ?q ?d { ?q wdt:'+_props.catalog+' wd:'+me.catalog_q+' ; wdt:'+_props.action_log+' ?d }' ;
+                if ( typeof me.catalog_q == 'undefined' ) { // All catalogs
+                    query = 'SELECT ?q ?d ?catalog { ?q wdt:'+_props.catalog+' ?catalog ; wdt:'+_props.action_log+' ?d }' ;
+                }
+                query += " ORDER BY DESC(?d) LIMIT 50" ;
+                wd.loadSPARQL ( query , function ( d ) {
+                    let to_load = [] ;
+                    $.each ( d.results.bindings , function ( dummy , b ) {
+                        let q = b.q.value.replace(/^.+\//,'') ;
+                        let entry = { q:q , ts:b.d.value } ;
+                        to_load.push ( q ) ;
+                        if ( typeof b.catalog != 'undefined' ) {
+                            entry.catalog_q = b.catalog.value.replace(/^.+\//,'') ;
+                            to_load.push ( entry.catalog_q ) ;
+                        }
+                        me.entries.push ( entry ) ;
+                    } ) ;
+                    wd.getItemBatch ( to_load , resolve ) ;
+                } )
             } ) ,
         ] ) .then ( () => {
             me.loaded = true ;
