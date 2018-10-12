@@ -10,6 +10,13 @@ class MixnMatch {
 	public $sparql_label_service = ' SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". } ' ;
 	private $cookiejar ; # For doPostRequest
 	private $browser_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:57.0) Gecko/20100101 Firefox/57.0" ;
+	private $bad_instance_of = [
+		'Q13406463' , # Wikimedia list article
+		'Q4167836' , # Wikimedia category
+		'Q4663903' , # Wikipedia portal
+		'Q4167410' , # Wikimedia disambiguation page
+		'Q11266439' , # Wikimedia template
+	] ;
 
 	function __construct ( $config_json_url = './config.json' ) {
 		$this->config = json_decode ( file_get_contents ( $config_json_url ) ) ;
@@ -92,7 +99,13 @@ class MixnMatch {
 	}
 
 	public function addAutoMatches ( $catalog ) {
-		$query = "SELECT DISTINCT ?q ?qLabel { ?q wdt:{$this->config->props->catalog} wd:{$catalog} MINUS { ?q wdt:{$this->config->props->manual} [] } MINUS { ?q wdt:{$this->config->props->auto} [] } {$this->sparql_label_service} }" ;
+		$query = "SELECT DISTINCT ?q ?qLabel (group_concat(?type;SEPARATOR='|') AS ?types) {" ;
+		$query .= " ?q wdt:{$this->config->props->catalog} wd:{$catalog}" ;
+		$query .= " MINUS { ?q wdt:{$this->config->props->manual} [] }" ;
+		$query .= " MINUS { ?q wdt:{$this->config->props->auto} [] }" ;
+		$query .= " OPTIONAL { ?q wdt:{$this->config->props->type_q} ?type } " ;
+		$query .= $this->sparql_label_service ;
+		$query .= "} GROUP BY ?q ?qLabel" ;
 		$sparql_results = $this->getSPARQL ( $query ) ;
 		foreach ( $sparql_results->results->bindings AS $b ) {
 			$q = preg_replace ( '/^.+\//' , '' , $b->q->value ) ;
@@ -101,11 +114,29 @@ class MixnMatch {
 			$search_results = $this->searchWikidata ( $label , 10 ) ;
 			if ( count($search_results) == 0 ) continue ;
 
+			$to_load = [] ;
+			foreach ( $search_results AS $result ) $to_load[] = $result->title ;
+			$this->wil_wd->loadItems ( $to_load ) ;
+
 			$data = [ 'claims' => [] ] ;
 			foreach ( $search_results AS $result ) {
-				$data['claims'][] = $this->getNewClaimString($this->config->props->auto,$result->title) ;
+				$target_q = $result->title ;
+				$i = $this->wil_wd->getItem ( $target_q ) ;
+				if ( !isset($i) ) continue ; # Item didn't load from Wikidata
+
+				# Check for bad instance_of
+				$claims = $i->getClaims('P31') ;
+				$skip_this = false ;
+				foreach ( $claims as $claim ) {
+					$instance_of = $i->getTarget ( $claim ) ;
+					if ( in_array ( $instance_of , $this->bad_instance_of ) ) $skip_this = true ;
+				}
+				if ( $skip_this ) continue ;
+
+				$data['claims'][] = $this->getNewClaimString($this->config->props->auto,$target_q) ;
 			}
-			$this->doEditEntity ( $q , $data , 'Auto-matching' ) ;
+
+			$result = $this->doEditEntity ( $q , $data , 'Auto-matching' ) ;
 		}
 	}
 
