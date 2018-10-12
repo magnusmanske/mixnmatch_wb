@@ -104,6 +104,23 @@ class MixnMatch {
 		return $output ;
 	}
 
+	public function getEditToken () {
+		$result = json_decode ( file_get_contents ( "{$this->config->mwapi}?action=query&meta=tokens&type=csrf&format=json" ) ) ;
+		return $result->query->tokens->csrftoken ;
+	}
+
+	public function doEditEntity ( $q , $data , $summary = '' ) {
+		$params = [
+			'action' => 'wbeditentity',
+			'id' => $q ,
+			'summary' => $summary ,
+			'token' => $this->getEditToken() ,
+			'data' => json_encode($data) ,
+			'format' => 'json'
+		] ;
+		$result = json_decode ( $this->doPostRequest ( $this->config->mwapi , $params ) ) ;
+		return $result ;
+	}
 
 	public function getNewClaimString ( $prop , $string ) {
 		return $this->getNewClaimFromSnak ( $this->getNewSnakString ( $prop , $string ) ) ;
