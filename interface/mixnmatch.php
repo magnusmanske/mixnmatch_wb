@@ -7,8 +7,8 @@ class MixnMatch {
 	public $wil_local ;
 	public $wil_wd ;
 	public $wd_sparql_api = 'https://query.wikidata.org/sparql' ;
-//	private $cookiejar ; # For doPostRequest
-//	private $browser_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:57.0) Gecko/20100101 Firefox/57.0" ;
+	private $cookiejar ; # For doPostRequest
+	private $browser_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:57.0) Gecko/20100101 Firefox/57.0" ;
 
 	function __construct ( $config_json_url = './config.json' ) {
 		$this->config = json_decode ( file_get_contents ( $config_json_url ) ) ;
@@ -83,7 +83,7 @@ class MixnMatch {
 
 		print implode ( "\n" , $qs_mnm ) ;
 	}
-/*
+
 	// Takes a URL and an array with POST parameters
 	public function doPostRequest ( $url , $params = [] , $optional_headers = null ) {
 		if ( !isset($this->cookiejar) ) $this->cookiejar = tmpfile() ;
@@ -103,7 +103,39 @@ class MixnMatch {
 		curl_close($ch);
 		return $output ;
 	}
-*/
+
+
+	public function getNewClaimString ( $prop , $string ) {
+		return $this->getNewClaimFromSnak ( $this->getNewSnakString ( $prop , $string ) ) ;
+	}
+
+	public function getNewClaimItem ( $prop , $target_q ) {
+		return $this->getNewClaimFromSnak ( $this->getNewSnakItem ( $prop , $target_q ) ) ;
+	}
+
+	public function getNewClaimDate ( $prop , $time , $precision = 9 ) {
+		return $this->getNewClaimFromSnak ( $this->getNewSnakDate ( $prop , $time , $precision ) ) ;
+	}
+
+	public function getNewClaimFromSnak ( $snak ) {
+		return [ 'type'=>'statement' , 'rank'=>'normal' , 'mainsnak'=>$snak ] ;
+	}
+
+	public function getNewSnakFromDatavalue ( $prop , $dv ) {
+		return [ 'snaktype'=>'value' , 'property'=>$prop , 'datavalue'=>$dv ] ;
+	}
+
+	public function getNewSnakDate ( $prop , $time , $precision = 9 ) {
+		return $this->getNewSnakFromDatavalue ( $prop , [ 'type'=>'time' , 'value'=>['time'=>$time,'precision'=>$precision,'calendarmodel'=>'http://www.wikidata.org/entity/Q1985727'] ] ) ;
+	}
+
+	public function getNewSnakString ( $prop , $string ) {
+		return $this->getNewSnakFromDatavalue ( $prop , [ 'type'=>'string' , 'value'=>$string ] ) ;
+	}
+
+	public function getNewSnakItem ( $prop , $target_q ) {
+		return $this->getNewSnakFromDatavalue ( $prop , [ 'type'=>'wikibase-entityid' , 'value'=>['entity-type'=>'item','id'=>$target_q,'numeric-id'=>preg_replace('/\D/','',$target_q)] ] ) ;
+	}
 
 	
 } ;

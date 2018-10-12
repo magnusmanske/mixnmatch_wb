@@ -55,12 +55,13 @@ div.card {
                 </table>
             </div>
         </div>
+
         <div class='card'>
             <div class="card-header">
                 <h5 class='card-title' tt="entry_types"></h5>
             </div>
             <div class="card-body">
-                <table class='table table-sm table-striped'>
+                <table class='table table-sm'>
                     <tbody>
                         <tr v-for='t in types'>
                             <td style='width:100%'>
@@ -74,6 +75,27 @@ div.card {
                 </table>
             </div>
         </div>
+        
+        <div class='card'>
+            <div class="card-header">
+                <h5 class='card-title' tt="matches_over_time"></h5>
+            </div>
+            <div class="card-body">
+                <table class='table table-sm'>
+                    <tbody>
+                        <tr v-for='e in edits_ym'>
+                            <td>
+                                {{e.ym}}
+                            </td>
+                            <td class='numeric'>
+                                {{e.cnt}}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
     </div>
     <div v-else>
         <i>Loading...</i>
@@ -87,16 +109,19 @@ div.card {
 let CatalogPage = Vue.extend ( {
     props : [ 'catalog_q' ] ,
     data : function () { return { loaded:false , i:{} , types:[] , stats:{} , stats_rows:[
-        { class:'bg-success' , key:'manual' , tt:'manually_matched' } ,
-        { class:'bg-info' , key:'auto' , tt:'auto_matched' } ,
-        { class:'bg-warning' , key:'na' , tt:'not_applicable' } ,
-        { class:'' , key:'unmatched' , tt:'not_matched' } ,
-    ] } } ,
+            { class:'bg-success' , key:'manual' , tt:'manually_matched' } ,
+            { class:'bg-info' , key:'auto' , tt:'auto_matched' } ,
+            { class:'bg-warning' , key:'na' , tt:'not_applicable' } ,
+            { class:'' , key:'unmatched' , tt:'not_matched' } ,
+        ] ,
+        edits_ym:[]
+        } } ,
     created : function () {
         let me = this ;
         me.loaded = false ;
         me.stats = {} ;
         me.types = [] ;
+        me.edits_ym = [] ;
         Promise.all ( [
             new Promise(function(resolve, reject) { wd.getItemBatch([me.catalog_q],resolve) } ) ,
             new Promise(function(resolve, reject) { // stats.auto
@@ -118,6 +143,14 @@ let CatalogPage = Vue.extend ( {
                 wd.loadSPARQL ( 
                     'SELECT (count(distinct ?catalog_q) AS ?cnt) { ?catalog_q wdt:'+_props.catalog+' wd:'+me.catalog_q+' MINUS { ?catalog_q wdt:'+_props.manual+' [] } MINUS { ?catalog_q wdt:'+_props.auto+' [] } MINUS { ?catalog_q wdt:'+_props.na+' [] } }',
                     function ( d ) { me.stats.unmatched = d.results.bindings[0].cnt.value*1 ; resolve() } )
+            } ) ,
+            new Promise(function(resolve, reject) { // stats.unmatched
+                wd.loadSPARQL ( 
+                    'SELECT ?ym (count(DISTINCT ?q) AS ?cnt) { ?q wdt:'+_props.catalog+' wd:'+me.catalog_q+' ; wdt:P9 [] ; wdt:P15 ?d . BIND ( concat(str(year(?d)),"-",str(month(?d))) AS ?ym ) } GROUP BY ?ym ORDER BY desc(?ym)',
+                    function ( d ) {
+                        $.each ( d.results.bindings , function ( dummy , b ) { me.edits_ym.push ( { ym:b.ym.value , cnt:b.cnt.value*1 } ) } ) ;
+                        resolve()
+                    } )
             } ) ,
             new Promise(function(resolve, reject) { // types
                 wd.loadSPARQL ( 
