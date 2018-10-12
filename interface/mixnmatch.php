@@ -7,6 +7,7 @@ class MixnMatch {
 	public $wil_local ;
 	public $wil_wd ;
 	public $wd_sparql_api = 'https://query.wikidata.org/sparql' ;
+	public $sparql_label_service = ' SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". } ' ;
 	private $cookiejar ; # For doPostRequest
 	private $browser_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:57.0) Gecko/20100101 Firefox/57.0" ;
 
@@ -83,6 +84,34 @@ class MixnMatch {
 
 		print implode ( "\n" , $qs_mnm ) ;
 	}
+
+	public function searchWikidata ( $query , $max_results = 50 ) {
+		$url = "https://www.wikidata.org/w/api.php?action=query&format=json&srnamespace=0&srlimit={$max_results}&list=search&srsearch=" . urlencode($query) ;
+		$j = json_decode ( file_get_contents ( $url ) ) ;
+		return $j->query->search ;
+	}
+
+	public function addAutoMatches ( $catalog ) {
+		$query = "SELECT DISTINCT ?q ?qLabel { ?q wdt:{$this->config->props->catalog} wd:{$catalog} MINUS { ?q wdt:{$this->config->props->manual} [] } MINUS { ?q wdt:{$this->config->props->auto} [] } {$this->sparql_label_service} }" ;
+		$sparql_results = $this->getSPARQL ( $query ) ;
+		foreach ( $sparql_results->results->bindings AS $b ) {
+			$q = preg_replace ( '/^.+\//' , '' , $b->q->value ) ;
+			$label = $b->qLabel->value ;
+
+			$search_results = $this->searchWikidata ( $label , 10 ) ;
+			if ( count($search_results) == 0 ) continue ;
+
+			$data = [ 'claims' => [] ] ;
+			foreach ( $search_results AS $result ) {
+				$data['claims'][] = $this->getNewClaimString($this->config->props->auto,$result->title) ;
+			}
+			$this->doEditEntity ( $q , $data , 'Auto-matching' ) ;
+		}
+	}
+
+
+
+	// METHODS FOR EDITING THE MIX'N'MATCH WIKI
 
 	// Takes a URL and an array with POST parameters
 	public function doPostRequest ( $url , $params = [] , $optional_headers = null ) {

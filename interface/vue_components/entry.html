@@ -72,6 +72,14 @@ div.entry_col12 {
 				<div v-if='hasManualMatch()'>
 				</div>
 				<div v-else-if='hasAutoMatch()'>
+					<div class='entry_col3' v-if='isLoggedIn()'>
+						<a href='#' class='set_user_q' @click.prevent='onSetUserQ' tt='set_q'></a>
+						|
+						<a href='#' class='new_item' @click.prevent='onCreateNewItem(q,forceUpdate)' tt='new_item'></a>
+						|
+						<a href='#' class='set_na' @click.prevent='onSetNA(q,forceUpdate)' tt='n_a'></a>
+					</div>
+					<div class='entry_col3' v-else tt='log_into_widar'></div>
 				</div>
 				<div v-else-if='isNA()' v-for='c in [getNAclaims()[0]]'>
 					<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
@@ -143,8 +151,10 @@ div.entry_col12 {
 			<div class='entry_col3' v-else tt='log_into_widar'></div>
 		</div>
 		<div v-else-if='hasAutoMatch()' class='entry_row' v-for='match in getAutoMatches()'>
-			<div class='entry_col12' style='display:flex;flex-direction:row;'>
+			<div class='entry_col1'>
 				<div><wd-link :wd='wdwd' :item='match' smallq='true'></wd-link></div>
+			</div>
+			<div class='entry_col2'>
 				<div>{{getWDitem(match).getDesc()}}</div>
 			</div>
 			<div class='entry_col3' v-if='isLoggedIn()'>
