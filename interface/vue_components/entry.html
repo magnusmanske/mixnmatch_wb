@@ -1,6 +1,6 @@
 <style>
 a.set_user_q { color:#14866d; }
-a.new_item { color:#b32424; }
+a.new_item { color:#DDD/*#b32424;*/ }
 a.set_na { color:#fc3; }
 a.remove_user_q { color:#b32424; }
 div.entry_block {
@@ -84,6 +84,9 @@ div.entry_col12 {
 				<input type='checkbox' v-model='use_fulltext' />
 				<span tt='use_fulltext'></span>
 			</label>
+		</div>
+		<div style='margin:3px;margin-left:auto;'>
+			<button class='btn btn-outline-danger' @click.prevent='entering_wd_q=false'>&times;</button>
 		</div>
 	</div>
 	<div v-else-if='hasManualMatch()' class='entry_row' v-for='c in getManualMatches()'>
@@ -197,7 +200,7 @@ Vue.component ( 'entry' , {
     	} ,
     	getWikipediaSearchString : function () { return this.getSearchString() } ,
     	getGoogleSearchString : function () { return this.getSearchString() } ,
-    	
+
     	getManualMatches : function () { return this.i.getClaimsForProperty(_props.manual) } ,
     	getNAclaims : function () { return this.i.getClaimsForProperty(_props.na) } ,
     	getAutoMatches : function () { return this.i.getStringsForProperty(_props.auto) } ,

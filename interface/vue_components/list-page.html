@@ -11,7 +11,7 @@
 	            <batch-navigator style='width:30rem;' :batch_size='batch_size' :total='total_entries' :current='current_page' :batch_size_options='[10,25,50]' @set-current='onSetBatch($event)' @set-size='onSetBatchSize($event)'></batch-navigator>
 	        </div>
             <div>
-            	<div is='entry' v-for='entry in entries' :q='entry' :key='entry'></div>
+            	<entry v-for='entry in entries' :q='entry' :key='entry'></entry>
             </div>
             <div style='center;margin-top:1rem;'>
 	            <batch-navigator style='width:30rem;' :batch_size='batch_size' :total='total_entries' :current='current_page' :batch_size_options='[10,25,50]' @set-current='onSetBatch($event)' @set-size='onSetBatchSize($event)'></batch-navigator>

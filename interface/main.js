@@ -9,11 +9,6 @@ let wdwd = new WikiData() ; // Wikidata
 
 let global_configuration , _props , _items ;
 
-/*
-RECENT CHANGES:
-SELECT ?q ?d { ?q wdt:P3 wd:Q4 ; schema:dateModified ?d } ORDER BY DESC(?d) LIMIT 50
-*/
-
 $(document).ready ( function () {
     vue_components.toolname = "mix-n-match" ;
     vue_components.components_base_url = 'https://mixnmatch.wmflabs.org/interface/resources/vue/' ;
@@ -26,6 +21,7 @@ $(document).ready ( function () {
                 'vue_components/catalog-header.html',
                 'vue_components/main-page.html',
                 'vue_components/catalog-page.html',
+                'vue_components/recent-changes.html',
                 'vue_components/list-page.html',
                 'vue_components/entry-page.html',
                 ] ) ,
@@ -45,6 +41,7 @@ $(document).ready ( function () {
             { path: '/', component: MainPage , props:true },
             { path: '/entry/:q', component: EntryPage , props:true },
             { path: '/catalog/:catalog_q', component: CatalogPage , props:true },
+            { path: '/rc/:catalog_q', component: RecentChangesPage , props:true },
             { path: '/list/:mode/:catalog_q', component: ListPage , props:true },
             { path: '/list/:mode/:catalog_q/:page', component: ListPage , props:true },
         ] ;
