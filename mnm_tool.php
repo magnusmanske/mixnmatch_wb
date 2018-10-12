@@ -4,21 +4,19 @@
 require_once ( 'interface/mixnmatch.php' ) ;
 
 if ( !isset($argv[1]) ) die ( "Needs command\n" ) ;
-$commands = $argv[1] ;
+$command = $argv[1] ;
 
 $mnm = new MixnMatch ( 'interface/config.json' ) ;
 
 if ( $command == 'auto' ) {
 
-	$q = $argv[2] ;
-	if ( !preg_match ( '/^Q\d+$/' , $q ) ) die ( "Usage: {$argv[0]} {$command} Qxxx\n" ) ;
-	$mnm->addAutoMatches ( $q ) ;
+	if ( !isset($argv[2]) or !preg_match ( '/^Q\d+$/' , $argv[2] ) ) die ( "Usage: {$argv[0]} {$command} Qxxx\n" ) ;
+	$mnm->addAutoMatches ( $argv[2] ) ;
 
 } else if ( $command == 'deauto' ) {
 
-	$q = $argv[2] ;
-	if ( !preg_match ( '/^Q\d+$/' , $q ) ) die ( "Usage: {$argv[0]} {$command} Qxxx\n" ) ;
-	$mnm->addAutoMatches ( $q ) ;
+	if ( !isset($argv[2]) or !preg_match ( '/^Q\d+$/' , $argv[2] ) ) die ( "Usage: {$argv[0]} {$command} Qxxx\n" ) ;
+	$mnm->removeAutoMatches ( $argv[2] ) ;
 
 } else {
 

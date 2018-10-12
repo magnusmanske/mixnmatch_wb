@@ -17,6 +17,8 @@ class MixnMatch {
 		'Q4167410' , # Wikimedia disambiguation page
 		'Q11266439' , # Wikimedia template
 	] ;
+	private $subclass_list_cache = [] ;
+
 
 	function __construct ( $config_json_url = './config.json' ) {
 		$this->config = json_decode ( file_get_contents ( $config_json_url ) ) ;
@@ -98,7 +100,47 @@ class MixnMatch {
 		return $j->query->search ;
 	}
 
-	public function addAutoMatches ( $catalog ) {
+	private function autoLimitWikibaseCache() {
+		$max_items = 5000 ;
+		if ( $this->wil_local->countItems() > $max_items ) {
+			$this->wil_local = new WikidataItemList ;
+			$this->wil_local->wikidata_api_url = $this->config->mwapi ;
+		}
+		if ( $this->wil_wd->countItems() > $max_items ) {
+			$this->wil_wd = new WikidataItemList ;
+		}
+	}
+
+	public function removeAutoMatches ( $catalog ) {
+		$query = "select distinct ?q { ?q wdt:{$this->config->props->catalog} wd:{$catalog} ; wdt:{$this->config->props->auto} [] }" ;
+		$sparql_results = $this->getSPARQL ( $query ) ;
+		foreach ( $sparql_results->results->bindings AS $b ) {
+			$this->autoLimitWikibaseCache() ;
+			$q = preg_replace ( '/^.+\//' , '' , $b->q->value ) ;
+			$i = $this->wil_local->loadItem ( $q ) ;
+			if ( !isset($i) ) continue ;
+
+			$data = [ 'claims' => [] ] ;
+			$claims = $i->getClaims($this->config->props->auto) ;
+			foreach ( $claims AS $claim ) {
+				$data['claims'][] = [ 'id'=>$claim->id , 'remove'=>'' ] ;
+			}
+			$result = $this->doEditEntity ( $q , $data , 'Cleaning up auto-matching' ) ;
+		}
+	}
+
+	# Gets all P279* for $q from Wikidata
+	public function getSubclassList ( $q ) {
+		if ( isset($this->subclass_list_cache[$q]) ) return $this->subclass_list_cache[$q] ;
+		$query = "SELECT DISTINCT ?q { ?q wdt:P279* wd:{$q} }" ;
+		$list = [] ;
+		$j = $this->getSPARQL ( $query , $this->wd_sparql_api ) ;
+		foreach ( $j->results->bindings AS $b ) $list[] = preg_replace ( '|^.*/|' , '' , $b->q->value ) ;
+		$this->subclass_list_cache[$q] = $list ;
+		return $list ;
+	}
+
+	public function addAutoMatches ( $catalog , $stringent_typing = true ) {
 		$query = "SELECT DISTINCT ?q ?qLabel (group_concat(?type;SEPARATOR='|') AS ?types) {" ;
 		$query .= " ?q wdt:{$this->config->props->catalog} wd:{$catalog}" ;
 		$query .= " MINUS { ?q wdt:{$this->config->props->manual} [] }" ;
@@ -108,10 +150,11 @@ class MixnMatch {
 		$query .= "} GROUP BY ?q ?qLabel" ;
 		$sparql_results = $this->getSPARQL ( $query ) ;
 		foreach ( $sparql_results->results->bindings AS $b ) {
+			$this->autoLimitWikibaseCache() ;
 			$q = preg_replace ( '/^.+\//' , '' , $b->q->value ) ;
 			$label = $b->qLabel->value ;
 
-			$search_results = $this->searchWikidata ( $label , 10 ) ;
+			$search_results = $this->searchWikidata ( $label , $stringent_typing?50:10 ) ;
 			if ( count($search_results) == 0 ) continue ;
 
 			$to_load = [] ;
@@ -124,6 +167,26 @@ class MixnMatch {
 				$i = $this->wil_wd->getItem ( $target_q ) ;
 				if ( !isset($i) ) continue ; # Item didn't load from Wikidata
 
+				# Check for stringent type:
+				# If the entry has one or more types, get all the type subclasses from Wikidata
+				# Then check if the search result is an instance of one of these subclass items
+				if ( $stringent_typing and isset($b->types) ) {
+					$types = explode ( '|' , $b->types->value ) ;
+					$found_matching_type = false ;
+					foreach ( $types AS $type ) {
+						$subclasses = $this->getSubclassList ( $type ) ;
+						$claims = $i->getClaims('P31') ;
+						foreach ( $claims as $claim ) {
+							$instance_of = $i->getTarget ( $claim ) ;
+							if ( !in_array ( $instance_of , $subclasses ) ) continue ;
+							$found_matching_type = true ;
+							break ;
+						}
+						if ( $found_matching_type ) break ;
+					}
+					if ( !$found_matching_type ) continue ;
+				}
+
 				# Check for bad instance_of
 				$claims = $i->getClaims('P31') ;
 				$skip_this = false ;
@@ -134,8 +197,10 @@ class MixnMatch {
 				if ( $skip_this ) continue ;
 
 				$data['claims'][] = $this->getNewClaimString($this->config->props->auto,$target_q) ;
+				if ( count($data['claims']) >= 10 ) break ; # Don't add more than 10 candidates
 			}
 
+			if ( count($data['claims']) == 0 ) continue ;
 			$result = $this->doEditEntity ( $q , $data , 'Auto-matching' ) ;
 		}
 	}
@@ -146,7 +211,7 @@ class MixnMatch {
 
 	// Takes a URL and an array with POST parameters
 	public function doPostRequest ( $url , $params = [] , $optional_headers = null ) {
-		if ( !isset($this->cookiejar) ) $this->cookiejar = tmpfile() ;
+#		if ( !isset($this->cookiejar) ) $this->cookiejar = tmpfile() ;
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_COOKIESESSION, true );
 		curl_setopt($ch, CURLOPT_COOKIEJAR, $this->cookiejar);

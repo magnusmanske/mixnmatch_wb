@@ -273,6 +273,10 @@ class WikidataItemList {
 			$q = 'Q'.preg_replace('/\D/','',"$q") ;
 		}
 	}
+
+	public function countItems() {
+		return count($this->items) ;
+	}
 	
 	public function updateItems ( $list ) {
 		$last_revs = array() ;
@@ -335,7 +339,8 @@ class WikidataItemList {
     }
     
     function loadItem ( $q ) {
-    	return $this->loadItems ( [ $q ] ) ;
+    	$this->loadItems ( [ $q ] ) ;
+    	return $this->getItem ( $q ) ;
     }
     
     function getItem ( $q ) {
