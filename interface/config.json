@@ -9,8 +9,10 @@
 	    "auto" : "P10" ,
 	    "na" : "P11" ,
 	    "type_q" : "P7",
-	    "matched_by" : "P12" ,
+	    "by_user" : "P12" ,
 	    "matched_on" : "P13" ,
+	    "action_log" : "P15",
+	    "action_type" : "P16",
 	    "catalog_url" : "P14"
 	} ,
 	"items":{

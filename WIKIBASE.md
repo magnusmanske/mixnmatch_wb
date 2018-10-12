@@ -57,6 +57,6 @@ You will get
 Edit nano docker-compose.yml outside the docker image, then restart
 
 ## Docker container issues
-* QuickStatements does not display commands sometimes (CORS issue?)
+* QuickStatements does not display commands; public_html/config.js needs to use https for api URL
 * QuickStatements conatiner PHP does not appear to have INTL module, no Normalizer class or normalizer_normalize function
 * SPARQL engine links items to http://wikibase.svc/entity/ instead of actual URL

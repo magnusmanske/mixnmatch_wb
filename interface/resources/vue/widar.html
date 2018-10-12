@@ -73,36 +73,41 @@ Vue.component ( 'widar' , {
 		newClaimDate : function ( prop , d ) {
 			let precision = 9 ; // 11=day, 10=month , 9=year
 			let m ;
-			
-			let year ;
-			let month = '01' ;
-			let day = '01' ;
-			
-			m = d.match ( /^(\d+)-(\d+)-(\d+)$/ ) ;
-			if ( m != null ) {
-				precision = 11 ;
-				year = '' + (m[1]*1) ;
-				month = '' + (m[2]*1) ;
-				day = '' + (m[3]*1) ;
+			let t ;
+
+			if ( /^\+\d+-\d\d-\d\dT\d\d:\d\d:\d\dZ/.test(d) ) {
+				t = d ;
+				precision = 14 ;
 			} else {
-				m = d.match ( /^(\d+)-(\d+)$/ ) ;
+				let year ;
+				let month = '01' ;
+				let day = '01' ;
+				
+				m = d.match ( /^(\d+)-(\d+)-(\d+)$/ ) ;
 				if ( m != null ) {
-					precision = 10 ;
+					precision = 11 ;
 					year = '' + (m[1]*1) ;
 					month = '' + (m[2]*1) ;
+					day = '' + (m[3]*1) ;
 				} else {
-					m = d.match ( /^(\d+)$/ ) ;
+					m = d.match ( /^(\d+)-(\d+)$/ ) ;
 					if ( m != null ) {
-						precision = 9 ;
+						precision = 10 ;
 						year = '' + (m[1]*1) ;
-					} else return ; // No match
+						month = '' + (m[2]*1) ;
+					} else {
+						m = d.match ( /^(\d+)$/ ) ;
+						if ( m != null ) {
+							precision = 9 ;
+							year = '' + (m[1]*1) ;
+						} else return ; // No match
+					}
 				}
+				
+				if ( month.length == 1 ) month = '0' + month ;
+				if ( day.length == 1 ) day = '0' + day ;
+				t = '+' + year + '-' + month + '-' + day + 'T00:00:00Z' ;
 			}
-			
-			if ( month.length == 1 ) month = '0' + month ;
-			if ( day.length == 1 ) day = '0' + day ;
-			let t = '+' + year + '-' + month + '-' + day + 'T00:00:00Z' ;
-			
 			
 			return {
 				mainsnak: {

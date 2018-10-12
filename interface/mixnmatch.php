@@ -70,7 +70,7 @@ class MixnMatch {
 			if ( !isset($ext2mnm_wdq[$ext_id]) ) { # Not in MnM => WD
 
 				$qs = $ext2mnm[$ext_id] . "\t{$this->config->props->manual}\t\"{$wdq}\"" ;
-				$qs .= "\t{$this->config->props->matched_by}\t\"|Wikidata importer\"" ;
+				$qs .= "\t{$this->config->props->by_user}\t\"|Wikidata importer\"" ;
 				$qs .= "\t{$this->config->props->matched_on}\t+2018-10-10T00:00:00Z/11" ; # TODO current date
 				$qs_mnm[] = $qs ;
 				continue ;

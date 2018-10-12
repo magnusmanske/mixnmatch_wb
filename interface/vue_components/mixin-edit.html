@@ -9,19 +9,25 @@ var editMixin = {
 			let me = this ;
 			Promise.all ( [
 				new Promise(function(resolve, reject) { // Edit in Mix'n'match
-					let now = new Date(Date.now()) ;
 					let data = { claims:[ widar.newClaimString(_props.manual,wdq) ] } ;
 					data.claims[0].qualifiers = {} ;
-					data.claims[0].qualifiers[_props.matched_by] = [ widar.newClaimString(_props.matched_by,widar.getUserName()).mainsnak ] ;
-					data.claims[0].qualifiers[_props.matched_on] = [ widar.newClaimDate(_props.matched_on,now.toISOString().substr(0,10)).mainsnak ] ;
+					data.claims[0].qualifiers[_props.by_user] = [ widar.newClaimString(_props.by_user,widar.getUserName()).mainsnak ] ;
+					data.claims[0].qualifiers[_props.matched_on] = [ widar.newClaimDate(_props.matched_on,me.getCurrentTime()).mainsnak ] ;
+					data.claims.push ( me.getActionClaim('add manual match') ) ;
 					me.editEntity ( q , data , resolve ) ;
 				} ) ,
 				new Promise(function(resolve, reject) { // Edit in Wikidata
 					me.getExternalIDandPropertyForEntry ( q , function ( ext_id , wd_prop ) {
 						if ( typeof ext_id == 'undefined' || typeof wd_prop == 'undefined' ) return resolve() ;
-						let summary = '' ; // TODO
-						let claim = widar.newClaimString ( wd_prop , ext_id ) ;
-						widar.addClaimToItem ( wdq , claim , summary , me.tool_hashtag , resolve ) ;
+						wdwd.getItemBatch ( [wdq] , function () {
+							let i = wdwd.getItem ( wdq ) ;
+							if ( typeof i == 'undefined' ) return resolve() ; // Wikidata item does not exist
+							let remove_data = me.getRemoveDataForClaimAndStringValue ( i , wd_prop , ext_id ) ;
+							if ( remove_data.claims.length > 0 ) return resolve() ; // A statement with that value already exists in the Wikidata item
+							let summary = '' ; // TODO
+							let claim = widar.newClaimString ( wd_prop , ext_id ) ;
+							widar.addClaimToItem ( wdq , claim , summary , me.tool_hashtag , resolve ) ;
+						} ) ;
 					} ) ;
 				} )
 		    ] ) .then ( () => { me.reloadItem ( q , callback ) } ) ;
@@ -37,6 +43,8 @@ var editMixin = {
 						let i = wd.getItem ( q ) ;
 						if ( typeof i == 'undefined' || !i.hasClaims(_props.manual) ) return resolve() ;
 						let data = me.getRemoveDataForClaimAndStringValue ( i , _props.manual , wdq ) ;
+						if ( data.claims.length == 0 ) return resolve() ; // No statements to remove
+						data.claims.push ( me.getActionClaim('remove manual match') ) ;
 						me.editEntity ( q , data , resolve ) ;
 					} )
 				} ) ,
@@ -47,13 +55,13 @@ var editMixin = {
 							let i = wdwd.getItem ( wdq ) ;
 							if ( typeof i == 'undefined' || !i.hasClaims(wd_prop) ) return resolve() ;
 							let data = me.getRemoveDataForClaimAndStringValue ( i , wd_prop , ext_id ) ;
+							if ( data.claims.length == 0 ) return resolve() ; // No statements to remove
 							let summary = "Removed in Mix'n'match" ;
 							widar.runWBEditEntity ( wdq , data , summary , me.tool_hashtag , resolve ) ;
-//							me.editEntity ( q , data , resolve ) ;
 						} ) ;
 					} )
 				} )
-		    ] ) .then ( () => { console.log("!"); me.reloadItem ( q , callback ) } ) ;
+		    ] ) .then ( () => { me.reloadItem ( q , callback ) } ) ;
 
 			me.reloadItem ( q , callback ) ;
 		} ,
@@ -67,6 +75,7 @@ var editMixin = {
 						let i = wd.getItem ( q ) ;
 						if ( typeof i == 'undefined' || !i.hasClaims(_props.na) ) return reject() ;
 						let data = me.getRemoveDataForClaimAndStringValue ( i , _props.na ) ;
+						data.claims.push ( me.getActionClaim('remove na') ) ;
 						me.editEntity ( q , data , resolve ) ;
 					} )
 				} )
@@ -78,11 +87,11 @@ var editMixin = {
 			let me = this ;
 			Promise.all ( [
 				new Promise(function(resolve, reject) { // Edit in Mix'n'match
-					let now = new Date(Date.now()) ;
 					let data = { claims:[ widar.newClaimString(_props.na,'N/A') ] } ;
 					data.claims[0].qualifiers = {} ;
-					data.claims[0].qualifiers[_props.matched_by] = [ widar.newClaimString(_props.matched_by,widar.getUserName()).mainsnak ] ;
-					data.claims[0].qualifiers[_props.matched_on] = [ widar.newClaimDate(_props.matched_on,now.toISOString().substr(0,10)).mainsnak ] ;
+					data.claims[0].qualifiers[_props.by_user] = [ widar.newClaimString(_props.by_user,widar.getUserName()).mainsnak ] ;
+					data.claims[0].qualifiers[_props.matched_on] = [ widar.newClaimDate(_props.matched_on,me.getCurrentTime()).mainsnak ] ;
+					data.claims.push ( me.getActionClaim('add na') ) ;
 					me.editEntity ( q , data , resolve ) ;
 				} )
 		    ] ) .then ( () => { me.reloadItem ( q , callback ) } ) ;
@@ -94,6 +103,24 @@ var editMixin = {
 			console.log ( 'CREATE NEW ITEM' , q ) ;
 			alert("Not yet implemented"); // TODO
 			me.reloadItem ( q , callback ) ;
+		} ,
+
+		getCurrentTime : function () {
+			let now = new Date(Date.now()) ;
+			// THIS SHOULD BE SECOND-PRECISE, BUT LAZY WIKIBASE DEVELOPERS HAVE NOT IMPLEMENTED <DAY-PRECISION
+			// SHOULD BE: return '+'+now.toISOString().replace(/\.\d+Z$/,'Z')
+			return now.toISOString().substr(0,10) ;
+		} ,
+
+		// Generates a claim to add to the "action log" property of an entry item in Mix'n'match
+		// Those are used for Recent Changes etc.
+		getActionClaim : function ( action_type ) {
+			let me = this ;
+			let claim = widar.newClaimDate(_props.action_log,me.getCurrentTime()) ;
+			claim.qualifiers = {} ;
+			claim.qualifiers[_props.by_user] = [ widar.newClaimString(_props.by_user,widar.getUserName()).mainsnak ] ;
+			claim.qualifiers[_props.action_type] = [ widar.newClaimString(_props.action_type,action_type).mainsnak ] ;
+			return claim ;
 		} ,
 
 		// Generates the data to remove claims via wbeditentiry
@@ -159,7 +186,7 @@ var editMixin = {
 		getMatchedByUserNameFromClaim : function ( c ) {
 			if ( typeof c == 'undefined' ) return '' ;
 			if ( typeof c.qualifiers == 'undefined' ) return '' ;
-			return (typeof c.qualifiers[_props['matched_by']]=='undefined') ? '' : c.qualifiers[_props['matched_by']][0].datavalue.value ;
+			return (typeof c.qualifiers[_props.by_user]=='undefined') ? '' : c.qualifiers[_props.by_user][0].datavalue.value ;
 		} ,
 
 		// Force-updates the wd global variable to use the current item data. Usually called after an edit, to update the interface
