@@ -13,7 +13,7 @@ var editMixin = {
 					data.claims[0].qualifiers = {} ;
 					data.claims[0].qualifiers[_props.by_user] = [ widar.newClaimString(_props.by_user,widar.getUserName()).mainsnak ] ;
 					data.claims[0].qualifiers[_props.matched_on] = [ widar.newClaimDate(_props.matched_on,me.getCurrentTime()).mainsnak ] ;
-					data.claims.push ( me.getActionClaim('add manual match') ) ;
+					data.claims.push ( me.getActionClaim('add manual match',wdq) ) ;
 					me.editEntity ( q , data , resolve ) ;
 				} ) ,
 				new Promise(function(resolve, reject) { // Edit in Wikidata
@@ -114,12 +114,15 @@ var editMixin = {
 
 		// Generates a claim to add to the "action log" property of an entry item in Mix'n'match
 		// Those are used for Recent Changes etc.
-		getActionClaim : function ( action_type ) {
+		getActionClaim : function ( action_type , wdq ) {
 			let me = this ;
 			let claim = widar.newClaimDate(_props.action_log,me.getCurrentTime()) ;
 			claim.qualifiers = {} ;
 			claim.qualifiers[_props.by_user] = [ widar.newClaimString(_props.by_user,widar.getUserName()).mainsnak ] ;
 			claim.qualifiers[_props.action_type] = [ widar.newClaimString(_props.action_type,action_type).mainsnak ] ;
+			if ( typeof wdq != 'undefined' && wdq != '' ) {
+				claim.qualifiers[_props.manual] = [ widar.newClaimString(_props.manual,wdq).mainsnak ] ;
+			}
 			return claim ;
 		} ,
 

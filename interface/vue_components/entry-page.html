@@ -31,6 +31,7 @@ table.entry_table tbody td {
                 </h5>
             </div>
             <div class="card-body">
+                <h5 class='card-title'>Key data</h5>
                 <table class='table table-bordered entry_table'>
                     <tbody>
                         <tr>
@@ -63,6 +64,35 @@ table.entry_table tbody td {
                     </tbody>
                 </table>
             </div>
+
+            <div class="card-body" v-if='hasActionLog()'>
+                <h5 class='card-title'>History</h5>
+                <table class='table table-bordered'>
+                    <tbody>
+                        <tr v-for='log_entry in getActionLog()'>
+                            <td nowrap>
+                                {{$.trim(log_entry.ts.replace(/[TZ\+]/g,' ').replace(/00:00:00/,''))}}
+                            </td>
+                            <td nowrap>
+                                <span v-if='typeof log_entry.username!="undefined"'>
+                                    <a target='_blank' class='wikidata' :href="'https://www.wikidata.org/wiki/User:'+encodeURIComponent(log_entry.username)">
+                                        {{log_entry.username}}
+                                    </a>
+                                </span>
+                            </td>
+                            <td nowrap>
+                                {{log_entry.type}}
+                            </td>
+                            <td style='width:100%' nowrap>
+                                <span v-if="typeof log_entry.wdq">
+                                    <wd-link :wd='wdwd' :item='log_entry.wdq' smallq='1'></wd-link>
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
         </div>
     </div>
     <div v-else>
@@ -120,6 +150,24 @@ let EntryPage = Vue.extend ( {
         } ,
         forceUpdate : function () {
             this.i = wd.getItem(this.q) ;
+        } ,
+        hasActionLog : function () {
+            return this.i.hasClaims(_props.action_log) ;
+        } ,
+        getActionLog : function () {
+            let me = this ;
+            let ret = [] ;
+            $.each ( me.i.getClaimsForProperty(_props.action_log) , function ( dummy , c ) {
+                let log_entry = { ts : c.mainsnak.datavalue.value.time } ;
+                if ( typeof c.qualifiers != 'undefined' ) {
+                    if ( typeof c.qualifiers[_props.by_user] != 'undefined' ) log_entry.username = c.qualifiers[_props.by_user][0].datavalue.value ;
+                    if ( typeof c.qualifiers[_props.action_type] != 'undefined' ) log_entry.type = c.qualifiers[_props.action_type][0].datavalue.value ;
+                    if ( typeof c.qualifiers[_props.manual] != 'undefined' ) log_entry.wdq = c.qualifiers[_props.manual][0].datavalue.value ;
+                }
+                ret.push ( log_entry ) ;
+            } ) ;
+            ret.sort ( function ( x , y ) { return x.ts - y.ts } ) ;
+            return ret ;
         } ,
     },
     template:'#entry-page-template'
