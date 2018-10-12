@@ -184,7 +184,12 @@ Vue.component ( 'entry' , {
     	hasAutoMatch : function () { return this.i.hasClaims(_props.auto) } ,
     	isNA : function () { return this.i.hasClaims(_props.na) } ,
     	isUnmatched : function () { return !(this.hasManualMatch()||this.hasAutoMatch()||this.isNA()) } ,
-    	getWikidataSearchString : function () { return this.i.getLabel() } , // TODO
+    	getWikidataSearchString : function () {
+    		let s = this.i.getLabel() ;
+    		s = s.replace ( /\s*\(.+?\)\s*/g , ' ' ) ;
+    		s = s.replace ( /\s*\[.+?\]\s*/g , ' ' ) ;
+    		return s ;
+    	} ,
     	getWikipediaSearchString : function () { return this.i.getLabel() } , // TODO
     	getGoogleSearchString : function () { return this.i.getLabel() } , // TODO
     	getManualMatches : function () { return this.i.getClaimsForProperty(_props.manual) } ,
