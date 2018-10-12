@@ -1,13 +1,12 @@
 <script>
 
 var editMixin = {
-    data : function () { return { tool_hashtag:'mix-n-match' } } ,
-	created : function () {
-	} ,
+    data : function () { return { tool_hashtag:'mixnmatch2' } } ,
 	methods : {
+
+		// Creates a manual match statement in the Mix'n'match wiki, and (if possible) the external_id statement on Wikidata
 		onCreateMatch : function ( q , wdq , callback ) {
 			let me = this ;
-
 			Promise.all ( [
 				new Promise(function(resolve, reject) { // Edit in Mix'n'match
 					let now = new Date(Date.now()) ;
@@ -18,19 +17,11 @@ var editMixin = {
 					me.editEntity ( q , data , resolve ) ;
 				} ) ,
 				new Promise(function(resolve, reject) { // Edit in Wikidata
-					wd.getItemBatch ( [q] , function () {
-						let i = wd.getItem ( q ) ;
-						if ( typeof i == 'undefined' || !i.hasClaims(_props.catalog) || !i.hasClaims(_props.ext_id) ) return resolve() ; // No catalog, no WD edit
-						let catalog_q = i.getClaimItemsForProperty(_props.catalog,true)[0] ;
-						let ext_id = i.getFirstStringForProperty(_props.ext_id) ;
-						wd.getItemBatch ( [catalog_q] , function () {
-							let ci = wd.getItem ( catalog_q ) ;
-							if ( typeof ci == 'undefined' || !ci.hasClaims(_props.wd_prop) ) return resolve() ; // No info in catalog, no WD edit
-							let wd_prop = ci.getFirstStringForProperty(_props.wd_prop) ;
-							let summary = '' ; // TODO
-							let claim = widar.newClaimString ( wd_prop , ext_id ) ;
-							widar.addClaimToItem ( wdq , claim , summary , me.tool_hashtag , resolve ) ;
-						} ) ;
+					me.getExternalIDandPropertyForEntry ( q , function ( ext_id , wd_prop ) {
+						if ( typeof ext_id == 'undefined' || typeof wd_prop != 'undefined' ) return resolve() ;
+						let summary = '' ; // TODO
+						let claim = widar.newClaimString ( wd_prop , ext_id ) ;
+						widar.addClaimToItem ( wdq , claim , summary , me.tool_hashtag , resolve ) ;
 					} ) ;
 				} )
 		    ] ) .then ( () => {
@@ -38,12 +29,41 @@ var editMixin = {
 		    } ) ;
 
 		} ,
+
+		// Removes a manual match from Mix'n'match and, if possible, from Wikidata
 		onRemoveMatch : function ( q , wdq , callback ) {
 			let me = this ;
-			let user = widar.getUserName() ;
 			console.log ( 'REMOVE' , q , wdq ) ;
+			// TODO
 			me.reloadItem ( q , callback ) ;
 		} ,
+
+		// Tags an entry item as N/A in Mix'n'match
+		onSetNA : function ( q , callback ) {
+			let me = this ;
+			console.log ( 'NA' , q ) ;
+			// TODO
+			me.reloadItem ( q , callback ) ;
+		} ,
+
+		// For an entry item in Mix'n'match, calls with the entry external ID and the Wikidata property from the catalog
+		getExternalIDandPropertyForEntry : function ( q , callback ) {
+			let me = this ;
+			wd.getItemBatch ( [q] , function () { // Get the entry item from Mix'n'match
+				let i = wd.getItem ( q ) ;
+				if ( typeof i == 'undefined' || !i.hasClaims(_props.catalog) || !i.hasClaims(_props.ext_id) ) return resolve() ; // No catalog, no WD edit
+				let catalog_q = i.getClaimItemsForProperty(_props.catalog,true)[0] ;
+				let ext_id = i.getFirstStringForProperty(_props.ext_id) ;
+				wd.getItemBatch ( [catalog_q] , function () { // Get the catalog item from Mix'n'match
+					let ci = wd.getItem ( catalog_q ) ;
+					if ( typeof ci == 'undefined' || !ci.hasClaims(_props.wd_prop) ) return resolve() ; // No info in catalog, no WD edit
+					let wd_prop = ci.getFirstStringForProperty(_props.wd_prop) ;
+					callback ( ext_id , wd_prop ) ;
+				} ) ;
+			} ) ;
+		} ,
+
+		// Runs wbeditentity on the Mix'n'match wiki
 		editEntity : function ( q , data , callback ) {
 			let me = this ;
 			me.getEditToken ( function ( token ) {
@@ -59,6 +79,8 @@ var editMixin = {
 				} , 'json' ) ;
 			} ) ;
 		} ,
+
+		// Retrieves an edit token from the Mix'n'match wiki
 		getEditToken : function ( callback ) {
 			$.get ( '/w/api.php' , {
 				action:'query',
@@ -68,24 +90,15 @@ var editMixin = {
 				callback ( d.query.tokens.csrftoken ) ;
 			} , 'json' ) ;
 		} ,
-		getWikiUserName : function () { // NOT USED
-			if ( global_configuration.loading_userdata ) return ;
-			if ( global_configuration.is_logged_in ) return ;
-			global_configuration.loading_userdata = true ;
-			global_configuration.is_logged_in = false ;
-			global_configuration.username = '' ;
-			let url = global_configuration.mwapi+'?action=query&meta=userinfo&format=json' ;
-			$.get ( url , function (d) {
-				if ( d.query.userinfo.id == 0 ) return ;
-				global_configuration.is_logged_in = true ;
-				global_configuration.username = d.query.userinfo.name ;
-			} , 'json' ) ;
-		} ,
+
+		// For a "manual match" claim in a Mix'n'match entry item, returns the Wikidata user name of the user who matched it, or ''
 		getMatchedByUserNameFromClaim : function ( c ) {
 			if ( typeof c == 'undefined' ) return '' ;
 			if ( typeof c.qualifiers == 'undefined' ) return '' ;
 			return (typeof c.qualifiers[_props['matched_by']]=='undefined') ? '' : c.qualifiers[_props['matched_by']][0].datavalue.value ;
 		} ,
+
+		// Force-updates the wd global variable to use the current item data. Usually called after an edit, to update the interface
 		reloadItem : function ( q , callback ) {
 			let api_params = {
 				action : 'wbgetentities' ,
@@ -101,10 +114,14 @@ var editMixin = {
 				if ( typeof callback != 'undefined' ) callback() ;
 			} ) ;
 		} ,
+
+		// Returns a link to a Wikidata user, usually with the name from getMatchedByUserNameFromClaim.
+		// Returns a text of the (altered) user name if it's a Mix'n'match internal "user" that has no real Wikidata account.
+		// Returns HTML!
 		getUserLink : function ( user ) {
 			if ( user == '' ) return '' ;
             if ( /^Mix'n'match /.test(user) ) {
-                return '<i>' + user + '</i>' ;
+                return '<i>' + user.replace(/^Mix'n'match /,'') + '</i>' ;
             } else {
                 return "<a href='https://www.wikidata.org/wiki/User:"+encodeURIComponent(user).replace(/'/g,'&apos;')+"' target='_blank' class='wikidata'>" + user + "</a>" ;
             }

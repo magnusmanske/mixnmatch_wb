@@ -87,13 +87,13 @@ div.entry_col12 {
 				{{getWDitem(i.getClaimTargetString(c)).getDesc()}}
 			</span>
 		</div>
-		<div class='entry_col3b' v-if='isLoggedIn()'>
+		<div class='entry_col3' v-if='isLoggedIn()'>
 			<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
 			<div>
 				<a href='#' class='remove_user_q' @click.prevent='onRemoveMatch(q,i.getClaimTargetString(c))' tt='remove'></a>
 			</div>
 		</div>
-		<div class='entry_col3b' v-else tt='log_into_widar'></div>
+		<div class='entry_col3' v-else tt='log_into_widar'></div>
 	</div>
 	<div v-else-if='isUnmatched()' class='entry_row'>
 		<div class='entry_col12'>
