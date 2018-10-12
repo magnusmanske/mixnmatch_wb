@@ -184,14 +184,20 @@ Vue.component ( 'entry' , {
     	hasAutoMatch : function () { return this.i.hasClaims(_props.auto) } ,
     	isNA : function () { return this.i.hasClaims(_props.na) } ,
     	isUnmatched : function () { return !(this.hasManualMatch()||this.hasAutoMatch()||this.isNA()) } ,
+
+    	getSearchString : function () {
+    		// TODO have a "preferred wikidata search string" property, and use it if present
+    		return this.i.getLabel() ;
+    	} ,
     	getWikidataSearchString : function () {
-    		let s = this.i.getLabel() ;
+    		let s = this.getSearchString() ;
     		s = s.replace ( /\s*\(.+?\)\s*/g , ' ' ) ;
     		s = s.replace ( /\s*\[.+?\]\s*/g , ' ' ) ;
     		return s ;
     	} ,
-    	getWikipediaSearchString : function () { return this.i.getLabel() } , // TODO
-    	getGoogleSearchString : function () { return this.i.getLabel() } , // TODO
+    	getWikipediaSearchString : function () { return this.getSearchString() } ,
+    	getGoogleSearchString : function () { return this.getSearchString() } ,
+    	
     	getManualMatches : function () { return this.i.getClaimsForProperty(_props.manual) } ,
     	getNAclaims : function () { return this.i.getClaimsForProperty(_props.na) } ,
     	getAutoMatches : function () { return this.i.getStringsForProperty(_props.auto) } ,
