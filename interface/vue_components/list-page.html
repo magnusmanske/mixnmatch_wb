@@ -25,10 +25,11 @@
 
 let ListPage = Vue.extend ( {
         props : [ 'catalog_q' , 'mode' , 'page' ] ,
-        data : function () { return { loaded:false , i:{} , current_page:0 , batch_size:10 , offset:0 , entries:[] , total_entries:0 } } ,
+        data : function () { return { loaded:false , i:{} , current_page:0 , default_batch_size:25 , batch_size:0 , offset:0 , entries:[] , total_entries:0 } } ,
         created : function () {
             let me = this ;
             me.loaded = false ;
+            me.batch_size = me.default_batch_size ;
             if ( typeof me.$route.query.size != 'undefined' ) me.batch_size = me.$route.query.size*1 ;
             if ( typeof me.page != 'undefined' ) me.current_page = me.page*1 ;
             Promise.all ( [
@@ -98,7 +99,7 @@ let ListPage = Vue.extend ( {
         	getMyURL : function ( new_page , batch_size ) {
         		let url = '/list/'+this.mode+'/'+this.catalog_q ;
         		if ( new_page != 0 ) url += '/'+new_page ;
-        		if ( batch_size != 10 ) url += "/?size=" + batch_size ;
+        		if ( batch_size != this.default_batch_size ) url += "/?size=" + batch_size ;
         		return url ;
         	} ,
         	onSetBatch : function ( new_page ) {

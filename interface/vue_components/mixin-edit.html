@@ -18,32 +18,96 @@ var editMixin = {
 				} ) ,
 				new Promise(function(resolve, reject) { // Edit in Wikidata
 					me.getExternalIDandPropertyForEntry ( q , function ( ext_id , wd_prop ) {
-						if ( typeof ext_id == 'undefined' || typeof wd_prop != 'undefined' ) return resolve() ;
+						if ( typeof ext_id == 'undefined' || typeof wd_prop == 'undefined' ) return resolve() ;
 						let summary = '' ; // TODO
 						let claim = widar.newClaimString ( wd_prop , ext_id ) ;
 						widar.addClaimToItem ( wdq , claim , summary , me.tool_hashtag , resolve ) ;
 					} ) ;
 				} )
-		    ] ) .then ( () => {
-				me.reloadItem ( q , callback ) ;
-		    } ) ;
-
+		    ] ) .then ( () => { me.reloadItem ( q , callback ) } ) ;
 		} ,
 
 		// Removes a manual match from Mix'n'match and, if possible, from Wikidata
 		onRemoveMatch : function ( q , wdq , callback ) {
 			let me = this ;
-			console.log ( 'REMOVE' , q , wdq ) ;
-			// TODO
+
+			Promise.all ( [
+				new Promise(function(resolve, reject) { // Edit in Mix'n'match
+					wd.getItemBatch ( [q] , function () { // Get the entry item from Mix'n'match
+						let i = wd.getItem ( q ) ;
+						if ( typeof i == 'undefined' || !i.hasClaims(_props.manual) ) return resolve() ;
+						let data = me.getRemoveDataForClaimAndStringValue ( i , _props.manual , wdq ) ;
+						me.editEntity ( q , data , resolve ) ;
+					} )
+				} ) ,
+				new Promise(function(resolve, reject) { // Edit in Wikidata
+					me.getExternalIDandPropertyForEntry ( q , function ( ext_id , wd_prop ) {
+						if ( typeof ext_id == 'undefined' || typeof wd_prop == 'undefined' ) return resolve() ;
+						wdwd.getItemBatch ( [wdq] , function () { // Get the item from Wikidata
+							let i = wdwd.getItem ( wdq ) ;
+							if ( typeof i == 'undefined' || !i.hasClaims(wd_prop) ) return resolve() ;
+							let data = me.getRemoveDataForClaimAndStringValue ( i , wd_prop , ext_id ) ;
+							let summary = "Removed in Mix'n'match" ;
+							widar.runWBEditEntity ( wdq , data , summary , me.tool_hashtag , resolve ) ;
+//							me.editEntity ( q , data , resolve ) ;
+						} ) ;
+					} )
+				} )
+		    ] ) .then ( () => { console.log("!"); me.reloadItem ( q , callback ) } ) ;
+
 			me.reloadItem ( q , callback ) ;
+		} ,
+
+		// Removes all NA tags from a Mix'n'match entry item
+		onRemoveNA : function ( q , callback ) {
+			let me = this ;
+			Promise.all ( [
+				new Promise(function(resolve, reject) { // Edit in Mix'n'match
+					wd.getItemBatch ( [q] , function () { // Get the entry item from Mix'n'match
+						let i = wd.getItem ( q ) ;
+						if ( typeof i == 'undefined' || !i.hasClaims(_props.na) ) return reject() ;
+						let data = me.getRemoveDataForClaimAndStringValue ( i , _props.na ) ;
+						me.editEntity ( q , data , resolve ) ;
+					} )
+				} )
+		    ] ) .then ( () => { me.reloadItem ( q , callback ) } ) ;
 		} ,
 
 		// Tags an entry item as N/A in Mix'n'match
 		onSetNA : function ( q , callback ) {
 			let me = this ;
-			console.log ( 'NA' , q ) ;
-			// TODO
+			Promise.all ( [
+				new Promise(function(resolve, reject) { // Edit in Mix'n'match
+					let now = new Date(Date.now()) ;
+					let data = { claims:[ widar.newClaimString(_props.na,'N/A') ] } ;
+					data.claims[0].qualifiers = {} ;
+					data.claims[0].qualifiers[_props.matched_by] = [ widar.newClaimString(_props.matched_by,widar.getUserName()).mainsnak ] ;
+					data.claims[0].qualifiers[_props.matched_on] = [ widar.newClaimDate(_props.matched_on,now.toISOString().substr(0,10)).mainsnak ] ;
+					me.editEntity ( q , data , resolve ) ;
+				} )
+		    ] ) .then ( () => { me.reloadItem ( q , callback ) } ) ;
+		} ,
+
+		// Create a new item on Wikidata, and match it to the Mix'n'match entry
+		onCreateNewItem : function ( q , callback ) {
+			let me = this ;
+			console.log ( 'CREATE NEW ITEM' , q ) ;
+			alert("Not yet implemented"); // TODO
 			me.reloadItem ( q , callback ) ;
+		} ,
+
+		// Generates the data to remove claims via wbeditentiry
+		// Works for string values (e.g. external_id). Leave the_value undefined or empty to get all claims for the property.
+		getRemoveDataForClaimAndStringValue : function ( i , property , the_value ) {
+			let me = this ;
+			let data = { claims:[] } ;
+			let claims = i.getClaimsForProperty(property) ;
+			$.each ( claims , function ( dummy , claim ) {
+				let claim_value = i.getClaimTargetString(claim) ;
+				if ( typeof the_value!='undefined' && the_value!='' && claim_value != the_value ) return ;
+				data.claims.push ( {id:claim.id,remove:''} )
+			} ) ;
+			return data ;
 		} ,
 
 		// For an entry item in Mix'n'match, calls with the entry external ID and the Wikidata property from the catalog

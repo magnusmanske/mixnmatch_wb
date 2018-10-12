@@ -7,7 +7,7 @@ ul.typeahead_search_results {
 }
 input.typeahead_search_results_query {
 	display:inline;
-	width:auto;
+	width:100%;
 }
 li.typeahead_search_results_row {
 	cursor:pointer;
@@ -69,18 +69,20 @@ div.typeahead_search_results_query_overlay {
 
 Vue.component ( 'typeahead-search' , {
 	template : '#typeahead-search-template' ,
-	props : [ 'type' , 'fulltext' , 'initial' , 'language' , 'limit' , 'noinitialsearch' , 'initial_q' ] ,
-	data : function () { return { query:'' , last_query:'' , results:[] , q:'' , is_search_running:false , is_search_done:false , timeout:'' , key_select_position:-1 , last_emit:'' } } ,
+	props : [ 'type' , 'fulltext' , 'initial' , 'language' , 'limit' , 'noinitialsearch' , 'initial_q' , 'wd' ] ,
+	data : function () { return { query:'' , last_query:'' , results:[] , q:'' , is_search_running:false , is_search_done:false , timeout:'' , key_select_position:-1 , last_emit:'' , use_wd:{} } } ,
 	created : function () {
 		var me = this ;
+		if ( typeof me.wd == 'undefined' ) me.use_wd = wd ;
+		else me.use_wd = me.wd ;
 		if ( typeof me.initial != 'undefined' && $.trim(me.initial) != '' ) {
 			me.query = $.trim(me.initial) ;
 			if ( !me.noinitialsearch ) me.doSearch () ;
 		} else if ( typeof me.initial_q != 'undefined' && $.trim(me.initial_q) != '' ) {
 			me.q = me.initial_q ;
 //			me.last_emit = me.q ; // ?
-			wd.getItemBatch ( [me.initial_q] , function () {
-				let i = wd.getItem ( me.initial_q ) ;
+			me.use_wd.getItemBatch ( [me.initial_q] , function () {
+				let i = me.use_wd.getItem ( me.initial_q ) ;
 				if ( typeof i == 'undefined' ) return ;
 				me.last_query = $.trim(i.getLabel()) ;
 				me.query = me.last_query ;
@@ -129,9 +131,9 @@ Vue.component ( 'typeahead-search' , {
 						to_load.push ( v.title ) ;
 					} ) ;
 
-					wd.getItemBatch ( to_load , function () {
+					me.use_wd.getItemBatch ( to_load , function () {
 						$.each ( me.results , function ( k , v ) {
-							let i = wd.getItem ( v.id ) ;
+							let i = me.use_wd.getItem ( v.id ) ;
 							if ( typeof i == 'undefined' ) return ;
 							me.results[k].label = i.getLabel() ;
 							me.results[k].description = i.getDesc() ;
@@ -227,8 +229,8 @@ Vue.component ( 'typeahead-search' , {
 	watch : {
 		initial_q : function ( new_q , old_q ) {
 			var me = this ;
-			wd.getItemBatch ( [ new_q ] , function () {
-				let i = wd.getItem ( new_q ) ;
+			me.use_wd.getItemBatch ( [ new_q ] , function () {
+				let i = me.use_wd.getItem ( new_q ) ;
 				let r = {
 					id : new_q ,
 					label : (typeof i=='undefined'?new_q:i.getLabel())

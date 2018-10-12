@@ -158,15 +158,13 @@ Vue.component ( 'widar' , {
 				rank : 'normal'
 			} ;
 		} ,
-		addClaimToItem : function ( q , claim , summary , tool_hashtag , callback ) {
+		runWBEditEntity : function ( q , data , summary , tool_hashtag , callback ) {
 			let me = this ;
 			let params = {
 				action:'wbeditentity',
 				id:q,
-				data:{ claims:[] }
+				data:JSON.stringify ( data )
 			} ;
-			params.data.claims.push ( claim ) ;
-			params.data = JSON.stringify ( params.data ) ;
 			params = {
 				action : 'generic' ,
 				summary : summary ,
@@ -176,6 +174,9 @@ Vue.component ( 'widar' , {
 			me.run ( params , function ( d ) {
 				callback ( d ) ;
 			} ) ;
+		} ,
+		addClaimToItem : function ( q , claim , summary , tool_hashtag , callback ) {
+			this.runWBEditEntity ( q , {claims:[claim]} , summary , tool_hashtag , callback ) ;
 		} ,
 		setLabelOrDescription : function ( type , q , lang , label , summary , tool_hashtag , callback ) {
 			let me = this ;

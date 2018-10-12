@@ -53,7 +53,7 @@ table.entry_table tbody td {
                             <th tt='manually_matched'></th>
                             <td>
                                 <div style='float:right;padding:5px;'>
-                                    <button class='btn btn-outline-danger' tt='remove' @click.prevent='onRemoveMatch(i.getID(),i.getClaimTargetString(c))'></button>
+                                    <button class='btn btn-outline-danger' tt='remove' @click.prevent='onRemoveMatch(i.getID(),i.getClaimTargetString(c),forceUpdate)'></button>
                                 </div>
                                 <div><wd-link :wd='wdwd' :item='i.getClaimTargetString(c)' smallq='1'></wd-link></div>
                                 <div v-html='getMatchedByOn(c)'>
@@ -117,7 +117,10 @@ let EntryPage = Vue.extend ( {
             }
             if ( date != '' ) ret += ' on ' + date ;
             return ret ;
-        }
+        } ,
+        forceUpdate : function () {
+            this.i = wd.getItem(this.q) ;
+        } ,
     },
     template:'#entry-page-template'
 } ) ;
