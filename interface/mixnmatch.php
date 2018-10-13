@@ -140,6 +140,12 @@ class MixnMatch {
 		return $list ;
 	}
 
+	public function getWikidataSearchString ( $s ) {
+		$s = preg_replace ( '/\(.*?\)/' , ' ' , $s ) ;
+		$s = preg_replace ( '/\s+/' , ' ' , $s ) ;
+		return trim($s) ;
+	}
+
 	public function addAutoMatches ( $catalog , $stringent_typing = true ) {
 		$query = "SELECT DISTINCT ?q ?qLabel (group_concat(?type;SEPARATOR='|') AS ?types) {" ;
 		$query .= " ?q wdt:{$this->config->props->catalog} wd:{$catalog}" ;
@@ -155,6 +161,7 @@ class MixnMatch {
 			$this->autoLimitWikibaseCache() ;
 			$q = preg_replace ( '/^.+\//' , '' , $b->q->value ) ;
 			$label = $b->qLabel->value ;
+			$label = $this->getWikidataSearchString ( $label ) ;
 
 			$search_results = $this->searchWikidata ( $label , $stringent_typing?50:10 ) ;
 			if ( count($search_results) == 0 ) continue ;
