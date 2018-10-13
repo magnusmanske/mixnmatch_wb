@@ -1,0 +1,32 @@
+<template id='search-box-template'>
+<div>
+    <form class='form'>
+        <div class="input-group">
+            <input type='text' v-model='query' placeholder='Search' />
+            <input type='submit' class='btn btn-light' @click.prevent='onSearch' value='&#128269;' />
+        </div>
+    </form>
+</div>
+</template>
+
+
+<script>
+'use strict';
+
+Vue.component ( 'search-box' , {
+    props : [] ,
+    data : function () { return { query:'' } } ,
+    created : function () {
+        let me = this ;
+    } ,
+    updated : function () { tt.updateInterface(this.$el) } ,
+    mounted : function () { tt.updateInterface(this.$el) } ,
+    methods : {
+        onSearch : function () {
+            this.$router.push ( '/search/'+encodeURIComponent(this.query) );
+        }
+    } ,
+    template : '#search-box-template'
+} ) ;
+
+</script>

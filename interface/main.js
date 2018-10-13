@@ -15,6 +15,7 @@ $(document).ready ( function () {
     Promise.all ( [
             vue_components.loadComponents ( ['widar','wd-date','wd-link','tool-translate','tool-navbar','commons-thumbnail','snak','batch-navigator','value-validator','typeahead-search',
                 'vue_components/mixin-edit.html',
+                'vue_components/search-box.html',
                 'vue_components/sparql-results.html',
                 'vue_components/entry.html',
                 'vue_components/catalog-dropdown.html',
@@ -24,6 +25,7 @@ $(document).ready ( function () {
                 'vue_components/recent-changes.html',
                 'vue_components/list-page.html',
                 'vue_components/entry-page.html',
+                'vue_components/search-page.html',
                 ] ) ,
             new Promise(function(resolve, reject) {
                 $.get ( './config.json' , function ( d ) {
@@ -45,6 +47,8 @@ $(document).ready ( function () {
             { path: '/rc/:catalog_q', component: RecentChangesPage , props:true },
             { path: '/list/:mode/:catalog_q', component: ListPage , props:true },
             { path: '/list/:mode/:catalog_q/:page', component: ListPage , props:true },
+            { path: '/search/:query', component: SearchPage , props:true },
+            { path: '/search/:query/:catalogs', component: SearchPage , props:true },
         ] ;
         router = new VueRouter({routes}) ;
         app = new Vue ( { router } ) .$mount('#app') ;

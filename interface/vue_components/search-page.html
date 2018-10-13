@@ -1,0 +1,104 @@
+<template id='search-page-template'>
+	<div class='container'>
+		<tool-navbar>
+                <template slot='right'>
+                    <search-box></search-box>
+                	<widar></widar>
+                </template>
+        </tool-navbar>
+        <div v-if='loaded'>
+            <div style='margin-bottom:1rem;'>
+                <div v-if='entries.length==0'>
+                    <i>No results for "<b>{{query}}</b>"</i>
+                </div>
+                <div v-else>
+                	<entry v-for='(entry,num) in entries' :q='entry' :key='entry'>
+                        <template slot='left'>
+                            <div style='text-align:right;font-family:Courier;margin-right:0.5rem;'>
+                                {{num+1}}
+                            </div>
+                        </template>
+                    </entry>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+'use strict';
+
+let SearchPage = Vue.extend ( {
+        props : [ 'query' , 'catalogs' ] ,
+        data : function () { return { loaded:false , entries:[] } } ,
+        created : function () {
+            this.doSearch ( this.query , this.catalogs ) ;
+		} ,
+        updated : function () { tt.updateInterface(this.$el) ; } ,
+        mounted : function () { tt.updateInterface(this.$el) ; } ,
+        methods : {
+
+            // Proper fulltext search (but Cirrus is broken, so use prefix search for now)
+            getItemsFromSearch : function ( query , callback ) {
+                let me = this ;
+                $.getJSON ( global_configuration.mwapi+'?callback=?' , {
+                    action:'query',
+                    format:'json',
+                    srnamespace:0,
+                    srlimit:500,
+                    list:'search',
+                    srsearch:query
+                } , function ( d ) { 
+                    $.each ( d.query.search , function ( dummy , v ) { me.entries.push ( v.title ) } ) ;
+                    // TODO continue searching if not all results
+                    callback() ;
+                } ) ;
+            } ,
+
+            // Perform prefix search, while Cirrus is broken
+            getItemsFromPrefixSearch : function ( query , callback , start_from = 0 ) {
+                let me = this ;
+                $.getJSON ( global_configuration.mwapi+'?callback=?' , {
+                    action:'wbsearchentities',
+                    format:'json',
+                    type:'item',
+                    limit:50,
+                    continue:start_from,
+                    language:'en', // For now...
+                    search:query
+                } , function ( d ) { 
+                    $.each ( d.search , function ( dummy , v ) { me.entries.push ( v.id ) } ) ;
+                    if ( typeof d['search-continue'] == 'undefined' ) return callback() ; // We are done
+                    // Next search results batch
+                    me.getItemsFromPrefixSearch ( query , callback , d['search-continue'] ) ;
+                } ) ;
+            } ,
+
+            // Load item information and display results
+            displayResults : function () {
+                let me = this ;
+                wd.getItemBatch ( me.entries , function () {
+                    me.loaded = true ;
+                } ) ;
+            } ,
+
+            // Limit result entries to those in catalogs
+            subsetEntries : function ( catalogs , callback ) {
+                callback() ;// TODO
+            } ,
+
+            // Statrs the search, optionally limiting to catalogs
+            doSearch : function ( query , catalogs ) {
+                let me = this ;
+                me.loaded = false ;
+                me.entries = [] ;
+                // TODO FIXME switch to proper fulltext search once Cirrus is fixed
+                me.getItemsFromPrefixSearch ( query , function () {
+                    if ( typeof catalogs == 'undefined' || catalogs == '' ) me.displayResults() ;
+                    else me.subsetEntries ( catalogs , me.displayResults )
+                } ) ;
+            }
+        },
+        template:'#search-page-template'
+    } ) ;
+</script>
