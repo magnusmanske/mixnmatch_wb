@@ -18,9 +18,13 @@ div.entry_block_rows {
 }
 div.entry_block:nth-child(even) {background: #FFF}
 div.entry_block:nth-child(odd) {background: #eaecf0}
+div.entry_block_working {opacity:0.5;}
 div.entry_row {
 	display:flex;
 	flex-direction:row;
+}
+div.entry_row_auto:hover {
+	background-color:#ff9;
 }
 div.entry_block:not(:first-child) {
 	border-top:1px solid rgb(221, 221, 221);
@@ -71,18 +75,18 @@ div.entry_col12 {
 			<div class='entry_col3' v-if='isLoggedIn()'>
 				<div v-if='hasManualMatch()'>
 				</div>
+				<div v-else-if='isNA()' v-for='c in [getNAclaims()[0]]'>
+					<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
+				</div>
 				<div v-else-if='hasAutoMatch()'>
 					<div class='entry_col3' v-if='isLoggedIn()'>
 						<a href='#' class='set_user_q' @click.prevent='onSetUserQ' tt='set_q'></a>
 						|
-						<a href='#' class='new_item' @click.prevent='onCreateNewItem(q,forceUpdate)' tt='new_item'></a>
+						<a href='#' class='new_item' @click.prevent='setWorking();onCreateNewItem(q,forceUpdate)' tt='new_item'></a>
 						|
-						<a href='#' class='set_na' @click.prevent='onSetNA(q,forceUpdate)' tt='n_a'></a>
+						<a href='#' class='set_na' @click.prevent='setWorking();onSetNA(q,forceUpdate)' tt='n_a'></a>
 					</div>
 					<div class='entry_col3' v-else tt='log_into_widar'></div>
-				</div>
-				<div v-else-if='isNA()' v-for='c in [getNAclaims()[0]]'>
-					<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
 				</div>
 				<div v-else>
 					<i tt='not_matched'></i>
@@ -118,7 +122,7 @@ div.entry_col12 {
 			<div class='entry_col3'>
 				<div style='font-size:9pt;' v-html='getUserLink(getMatchedByUserNameFromClaim(c))'></div>
 				<div v-if='isLoggedIn()'>
-					<a href='#' class='remove_user_q' @click.prevent='onRemoveMatch(q,i.getClaimTargetString(c),forceUpdate)' tt='remove'></a>
+					<a href='#' class='remove_user_q' @click.prevent='setWorking();onRemoveMatch(q,i.getClaimTargetString(c),forceUpdate)' tt='remove'></a>
 				</div>
 				<div v-else tt='log_into_widar'></div>
 			</div>
@@ -127,7 +131,7 @@ div.entry_col12 {
 			<div class='entry_col12'><i tt='not_applicable'></i></div>
 			<div class='entry_col3' v-for='c in [getNAclaims()[0]]'>
 				<div v-if='isLoggedIn()'>
-					<a href='#' class='remove_user_q' @click.prevent='onRemoveNA(q,forceUpdate)' tt='remove'></a>
+					<a href='#' class='remove_user_q' @click.prevent='setWorking();onRemoveNA(q,forceUpdate)' tt='remove'></a>
 				</div>
 				<div v-else tt='log_into_widar'></div>
 			</div>
@@ -144,13 +148,13 @@ div.entry_col12 {
 			<div class='entry_col3' v-if='isLoggedIn()'>
 				<a href='#' class='set_user_q' @click.prevent='onSetUserQ' tt='set_q'></a>
 				|
-				<a href='#' class='new_item' @click.prevent='onCreateNewItem(q,forceUpdate)' tt='new_item'></a>
+				<a href='#' class='new_item' @click.prevent='setWorking();onCreateNewItem(q,forceUpdate)' tt='new_item'></a>
 				|
-				<a href='#' class='set_na' @click.prevent='onSetNA(q,forceUpdate)' tt='n_a'></a>
+				<a href='#' class='set_na' @click.prevent='setWorking();onSetNA(q,forceUpdate)' tt='n_a'></a>
 			</div>
 			<div class='entry_col3' v-else tt='log_into_widar'></div>
 		</div>
-		<div v-else-if='hasAutoMatch()' class='entry_row' v-for='match in getAutoMatches()'>
+		<div v-else-if='hasAutoMatch()' class='entry_row entry_row_auto' v-for='match in getAutoMatches()'>
 			<div class='entry_col1'>
 				<div><wd-link :wd='wdwd' :item='match' smallq='true'></wd-link></div>
 			</div>
@@ -224,13 +228,17 @@ Vue.component ( 'entry' , {
 
     	getManualMatches : function () { return this.i.getClaimsForProperty(_props.manual) } ,
     	getNAclaims : function () { return this.i.getClaimsForProperty(_props.na) } ,
-    	getAutoMatches : function () { return this.i.getStringsForProperty(_props.auto) } ,
+    	getAutoMatches : function () {
+    		let ret = this.i.getStringsForProperty(_props.auto) ;
+    		return ret.filter((v, i, a) => a.indexOf(v) === i) ; // Unique
+    	} ,
     	getWDitem : function ( q ) { return wdwd.getItem(q) } ,
     	onSetUserQ : function () {
    			this.entering_wd_q = true ;
     	} ,
     	onSetQ : function ( event ) {
     		let me = this ;
+    		me.setWorking();
 			me.onCreateMatch ( me.q , event , function () {
 				me.forceUpdate() ;
 			} ) ;
@@ -238,12 +246,17 @@ Vue.component ( 'entry' , {
     	} ,
     	onSetQFromAuto : function ( match_q ) {
     		let me = this ;
+    		me.setWorking() ;
 			me.onCreateMatch ( me.q , match_q , function () {
 				me.forceUpdate() ;
 			} ) ;
     	} ,
+    	setWorking : function () {
+    		$(this.$el).addClass('entry_block_working');
+    	} ,
     	forceUpdate : function () {
     		this.i = wd.getItem(this.q) ;
+			$(this.$el).removeClass('entry_block_working');
     	} ,
     } ,
     template : '#entry-template'

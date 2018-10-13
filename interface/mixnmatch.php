@@ -101,7 +101,7 @@ class MixnMatch {
 	}
 
 	private function autoLimitWikibaseCache() {
-		$max_items = 5000 ;
+		$max_items = 500 ;
 		if ( $this->wil_local->countItems() > $max_items ) {
 			$this->wil_local = new WikidataItemList ;
 			$this->wil_local->wikidata_api_url = $this->config->mwapi ;
@@ -145,9 +145,11 @@ class MixnMatch {
 		$query .= " ?q wdt:{$this->config->props->catalog} wd:{$catalog}" ;
 		$query .= " MINUS { ?q wdt:{$this->config->props->manual} [] }" ;
 		$query .= " MINUS { ?q wdt:{$this->config->props->auto} [] }" ;
+		$query .= " MINUS { ?q wdt:{$this->config->props->na} [] }" ;
 		$query .= " OPTIONAL { ?q wdt:{$this->config->props->type_q} ?type } " ;
 		$query .= $this->sparql_label_service ;
 		$query .= "} GROUP BY ?q ?qLabel" ;
+		
 		$sparql_results = $this->getSPARQL ( $query ) ;
 		foreach ( $sparql_results->results->bindings AS $b ) {
 			$this->autoLimitWikibaseCache() ;
@@ -161,40 +163,40 @@ class MixnMatch {
 			foreach ( $search_results AS $result ) $to_load[] = $result->title ;
 			$this->wil_wd->loadItems ( $to_load ) ;
 
+			# For stringent typing:
+			# If the entry has one or more types, get all the type subclasses from Wikidata
+			$stringent_subclasses = [] ;
+			if ( $stringent_typing and isset($b->types) ) {
+				$types = explode ( '|' , $b->types->value ) ;
+				foreach ( $types AS $type ) {
+					$stringent_subclasses = array_merge ( $stringent_subclasses , $this->getSubclassList ( $type ) ) ;
+				}
+				$stringent_subclasses = array_unique ( $stringent_subclasses ) ;
+			}
+
+			# Check all search results
+			$had_that_target_q = [] ;
 			$data = [ 'claims' => [] ] ;
 			foreach ( $search_results AS $result ) {
 				$target_q = $result->title ;
+				if ( isset($had_that_target_q[$target_q]) ) continue ;
+				$had_that_target_q[$target_q] = true ;
+
 				$i = $this->wil_wd->getItem ( $target_q ) ;
 				if ( !isset($i) ) continue ; # Item didn't load from Wikidata
 
+				$claim_instances = [] ;
+				foreach ( $i->getClaims('P31') as $claim ) $claim_instances[] = $i->getTarget ( $claim ) ;
+
 				# Check for stringent type:
-				# If the entry has one or more types, get all the type subclasses from Wikidata
-				# Then check if the search result is an instance of one of these subclass items
-				if ( $stringent_typing and isset($b->types) ) {
-					$types = explode ( '|' , $b->types->value ) ;
-					$found_matching_type = false ;
-					foreach ( $types AS $type ) {
-						$subclasses = $this->getSubclassList ( $type ) ;
-						$claims = $i->getClaims('P31') ;
-						foreach ( $claims as $claim ) {
-							$instance_of = $i->getTarget ( $claim ) ;
-							if ( !in_array ( $instance_of , $subclasses ) ) continue ;
-							$found_matching_type = true ;
-							break ;
-						}
-						if ( $found_matching_type ) break ;
-					}
-					if ( !$found_matching_type ) continue ;
+				# Check if the search result is an instance of one of these subclass items
+				# But only if we have entry types AND at least one P31 (if not, icnlude it anyway, apparently noone has worked on the item...)
+				if ( $stringent_typing and isset($b->types) and count($claim_instances) > 0 ) {
+					if ( count ( array_intersect ( $stringent_subclasses , $claim_instances ) ) == 0 ) continue ; # Skip this result if not a _good_ P31
 				}
 
 				# Check for bad instance_of
-				$claims = $i->getClaims('P31') ;
-				$skip_this = false ;
-				foreach ( $claims as $claim ) {
-					$instance_of = $i->getTarget ( $claim ) ;
-					if ( in_array ( $instance_of , $this->bad_instance_of ) ) $skip_this = true ;
-				}
-				if ( $skip_this ) continue ;
+				if ( count ( array_intersect ( $this->bad_instance_of , $claim_instances ) ) > 0 ) continue ; # Skin this result if _bad_ P31
 
 				$data['claims'][] = $this->getNewClaimString($this->config->props->auto,$target_q) ;
 				if ( count($data['claims']) >= 10 ) break ; # Don't add more than 10 candidates
