@@ -116,7 +116,12 @@ div.entry_col12 {
 			</div>
 			<div class='entry_col2'>
 				<span v-if='typeof getWDitem(i.getClaimTargetString(c))!="undefined"'>
-					{{getWDitem(i.getClaimTargetString(c)).getDesc()}}
+					<span v-if='getWDitem(i.getClaimTargetString(c)).getDesc()==""'>
+						<autodesc :item='i.getClaimTargetString(c)' mode='long'></autodesc>
+					</span>
+					<span v-else>
+						{{getWDitem(i.getClaimTargetString(c)).getDesc()}}
+					</span>
 				</span>
 			</div>
 			<div class='entry_col3'>
