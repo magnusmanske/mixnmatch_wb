@@ -13,7 +13,7 @@
 * Start with `sudo docker-compose up --no-build -d`
 
 ## Configuration
-* Add php for shell: `sudo apt-get install php-cli php-curl`
+* Add php for shell: `sudo apt-get install php-cli php-curl php-sqlite3 sqlite3`
 * Add `- ./interface:/var/www/html/interface` to `services/wikibase/volumes` in `docker-compose.yml`
 * URLs: http://mixnmatch.wmflabs.org http://mixnmatch-query.wmflabs.org http://mixnmatch-qs.wmflabs.org
 * Open new shell on wikibase: `sudo docker exec -it wikibase-docker_wikibase_1 bash`

@@ -246,12 +246,13 @@ class MixnMatch {
 	public function doEditEntity ( $q , $data , $summary = '' ) {
 		$params = [
 			'action' => 'wbeditentity',
-			'id' => $q ,
 			'summary' => $summary ,
 			'token' => $this->getEditToken() ,
 			'data' => json_encode($data) ,
 			'format' => 'json'
 		] ;
+		if ( $q != '' ) $params['id'] = $q ; // Edit existing item
+		else $params['new'] = 'item' ; // Create new item
 		$result = json_decode ( $this->doPostRequest ( $this->config->mwapi , $params ) ) ;
 		return $result ;
 	}
