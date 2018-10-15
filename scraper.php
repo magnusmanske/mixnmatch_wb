@@ -1,4 +1,3 @@
-#!/usr/bin/php
 <?php
 
 require_once ( 'interface/mixnmatch.php' ) ;
@@ -8,9 +7,11 @@ class Scraper {
 	public $base_path = './scraper' ;
 	public $db ; # SQLite3 database handle
 	public $catalog_q ;
+	private $ext_id2q = [] ;
 
-	function __construct () {
+	function __construct ( $q = '' ) {
 		$this->mnm = new MixnMatch ( 'interface/config.json' ) ;
+		if ( $q != '' ) $this->catalog_q = $q ;
 	}
 
 	public function getorCreateCatalogItem ( $parameters , $do_create = true ) {
@@ -43,6 +44,7 @@ class Scraper {
 
 		# Create new item for catalog
 		$data = [ 'claims' => [] ] ;
+		$data['claims'][] = $this->mnm->getNewClaimItem($this->mnm->config->props->isa,$this->mnm->config->items->catalog) ;
 		if ( isset($parameters['label']) ) {
 			$lang = 'en' ;
 			if ( isset($parameters['language']) ) $lang = $parameters['language'] ;
@@ -62,15 +64,15 @@ class Scraper {
 		return $this->getorCreateCatalogItem ( $parameters , false ) ;
 	}
 
-	public function ensureDirectoryStructureForCatalog ( $q ) {
-		$this->catalog_q = $q ;
+	public function ensureDirectoryStructureForCatalog () {
 		if ( !file_exists($this->base_path) ) mkdir ( $this->base_path ) ;
-		$path = "{$this->base_path}/{$q}" ;
+		$path = "{$this->base_path}/{$this->catalog_q}" ;
 		if ( !file_exists($path) ) mkdir ( $path ) ;
-		$this->openOrCreateDatabase ( $q ) ;
+		$this->openOrCreateDatabase ( $this->catalog_q ) ;
 	}
 
 	public function openOrCreateDatabase () {
+		if ( isset($this->db) ) return $this->db ;
 		$db_file = "{$this->base_path}/{$this->catalog_q}/{$this->catalog_q}.sqlite3" ;
 		$create_new_database = !file_exists ( $db_file ) ;
 		$this->db = new SQLite3 ( $db_file ) ;
@@ -84,6 +86,7 @@ class Scraper {
 			"INSERT OR IGNORE INTO kv ( k , v ) VALUES ( 'Q' , '{$this->catalog_q}' )"
 		] ;
 		foreach ( $sql_commands AS $sql ) $this->exec ( $sql ) ;
+		return $this->db ;
 	}
 
 	# Runs a SQL command on the sqlite3 database for the catalog
@@ -154,9 +157,17 @@ class Scraper {
 		}
 	}
 
+	private function loadExternalIDsForCatalog () {
+		if ( !isset($this->catalog_q) ) die ( "No catalog set!\n" ) ;
+		$sparql = "SELECT DISTINCT ?q ?ext_id { ?q wdt:{$this->mnm->config->props->catalog} wd:{$this->catalog_q} ; wdt:{$this->mnm->config->props->ext_id} ?ext_id }" ;
+		$j = $this->mnm->getSPARQL ( $sparql ) ;
+		foreach ( $j->results->bindings AS $b ) $this->ext_id2q[$b->ext_id->value] = preg_replace ( '|^.*/|' , '' , $b->q->value ) ;
+	}
+
 	# Processes all the downloaded pages, where necessary
 	public function processPages () {
 		$j = $this->getScraperSetup() ;
+		$this->loadExternalIDsForCatalog() ;
 		$this->openOrCreateDatabase() ;
 		$sql = "SELECT * FROM page_cache WHERE is_downloaded=1 AND is_processed=0" ;
 		$results = $this->db->query ( $sql ) ;
@@ -210,7 +221,12 @@ class Scraper {
 				$value = str_replace ( $k , $v , $value ) ;
 			}
 
-			# TODO rx rules
+			if ( isset($rules->rx) ) {
+				foreach ( $rules->rx AS $r ) {
+					$pattern = $this->escapeScraperRegexp ( $r->pattern ) ;
+					$value = preg_replace ( $pattern , $r->replace , $value ) ;
+				}
+			}
 
 			$ret[$key] = $value ;
 		}
@@ -222,7 +238,6 @@ class Scraper {
 		$contents = gzuncompress ( base64_decode ( $row['contents'] ) ) ;
 		if ( isset($config->parse->utf8_encode) ) $contents = utf8_encode ( $contents ) ;
 		if ( isset($config->parse->simple_space) ) $contents = preg_replace ( '/\s+/' , ' ' , $contents ) ;
-		print "{$row['url']}\n" ;
 
 		$params = json_decode ( $row['params'] ) ;
 		$blocks = [] ;
@@ -233,34 +248,58 @@ class Scraper {
 			$blocks = $m[1] ;
 		} else $blocks[] = $contents ;
 
-		$cnt = 0 ;
 		foreach ( $blocks AS $block ) {
 			$res = $this->parseBlock ( $config , $block ) ;
 			if ( !isset($res) ) continue ;
 			$res = $this->resolveParsing ( $params , $config , $res ) ;
 			if ( !isset($res) or !isset($res['id']) or !isset($res['label']) or $res['id']=='' or $res['label']=='' ) continue ;
-			$cnt++ ;
-			# TODO create/edit Wikibase
+			if ( function_exists('catalogSpecificParser') ) catalogSpecificParser ( $config , $block , $res ) ;
+			$this->createOrUpdateItem ( $res ) ;
 		}
-		print "{$cnt}\n" ;
-		# TODO mark as parsed
 
-		exit(0) ;
+		// Mark page cache as processed
+		$this->exec ( "UPDATE page_cache SET is_processed=1 WHERE id={$row['id']}" ) ;
+	}
+
+	private function createOrUpdateItem ( $item , $do_update = false ) {
+		if ( isset($this->ext_id2q[$item['id']]) and !$do_update ) return ; // Already exists
+		$lang = $this->getCatalogLanguage() ;
+		$data = [ 'claims' => [] , 'labels' => [] ] ;
+		$data['labels'][$lang] = [ 'language' => $lang , 'value' => $item['label'] ] ;
+		$data['claims'][] = $this->mnm->getNewClaimString($this->mnm->config->props->ext_id,$item['id']) ;
+		$data['claims'][] = $this->mnm->getNewClaimItem($this->mnm->config->props->catalog,$this->catalog_q) ;
+		if ( isset($item['desc']) and $item['desc'] != '' ) {
+			$data['descriptions'] = [] ;
+			$data['descriptions'][$lang] = [ 'language' => $lang , 'value' => $item['desc'] ] ;
+		}
+		if ( isset($item['url']) and $item['url'] != '' ) $data['claims'][] = $this->mnm->getNewClaimString($this->mnm->config->props->ext_url,$item['url']) ;
+		if ( isset($item['type']) and $item['type'] != '' ) $data['claims'][] = $this->mnm->getNewClaimString($this->mnm->config->props->type_q,$item['type']) ;
+		$result = $this->mnm->doEditEntity ( '' , $data , 'Created by Scraper' ) ;
+		if ( !isset($result->entity) ) {
+			if ( isset($result->error) ) {
+				# "Item with that label/description already exists" - attempt to bypass by adding ID to description
+				if ( $result->error->code == 'modification-failed' and preg_match ( '/already has label.+using the same description text/' , $result->error->info ) ) {
+					$item['desc'] .= " [{$item['id']}]" ;
+					return $this->createOrUpdateItem ( $item , $do_update ) ;
+				}
+			}
+			print_r ( $item ) ;
+//			print_r ( $data ) ;
+			print_r ( $result ) ;
+			die ("PROBLEM\n");
+		}
+		$this->ext_id2q[$item['id']] = $result->entity->id ;
+	}
+
+	public function getCatalogLanguage () {
+		return 'en' ; // TODO
+	}
+
+	public function getCatalogSpecificIncludePath () {
+		if ( !isset($this->catalog_q) ) return '' ;
+		return "{$this->base_path}/{$this->catalog_q}/parser.php" ;
 	}
 
 } ;
-
-$s = new Scraper ;
-$p = [
-	'label' => 'Pastscape' ,
-	'wd_prop' => 'P4117' ,
-	'catalog_url' => 'https://pastscape.org.uk'
-] ;
-$q = $s->getorCreateCatalogItem ( $p ) ;
-if ( !isset($q) ) die ( "Could not get a catalog ID for ".json_encode($p)."\n") ;
-$s->ensureDirectoryStructureForCatalog ( $q ) ;
-$s->updateURLs () ;
-$s->cachePages () ;
-$s->processPages () ;
 
 ?>

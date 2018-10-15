@@ -13,7 +13,7 @@
 		"resolve":{
 			"id":{"base":"$1"},
 			"label":{"base":"$2"},
-			"desc":{"base":"$3"},
+			"desc":{"base":"$3","rx":[{"pattern":" Monument Pictures$","replace":""}]},
 			"url":{"base":"https://www.pastscape.org.uk/hob.aspx?hob_id=$1"},
 			"type":{"base":"Q811979"}
 		}
