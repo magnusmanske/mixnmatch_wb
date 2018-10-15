@@ -11,6 +11,7 @@
 
         <div class="dropdown-divider"></div>
 
+        <a target="_blank" :href="'/wiki/Item:'+catalog_q" class="dropdown-item mixnmatch_wb" style="padding: 2px;">{{catalog_q}} on Mix'n'Match Wikibase</a>
         <router-link :to="'/rc/'+catalog_q" class="dropdown-item" tt="rc_for_catalog" style="padding: 2px;"></router-link> 
 <!--
         <a href="#/site_stats/1807" class="dropdown-item" tt="site_stats" style="padding: 2px;">Site stats</a> 
@@ -25,7 +26,7 @@
         <a target="_blank" href="https://tools.wmflabs.org/wikidata-todo/sparql_rc.php?sparql=SELECT+%3Fq+WHERE+%7B+%3Fq+wdt%3AP5936+%5B%5D+%7D&amp;start=last+week&amp;end=" tt="changes_last_week" class="dropdown-item external" style="padding: 2px;">Changes last week</a> 
         <a target="_blank" href="https://www.wikidata.org/wiki/User:Magnus_Manske/Mix%27n%27match_report/1807" tt="catalog_report" class="dropdown-item wikidata" style="padding: 2px;">Catalog report</a> 
 -->
-        <a v-if='getProperty()!=""' target="_blank" :href="'https://www.wikidata.org/wiki/Property:'+getProperty()" class="dropdown-item wikidata" style="padding: 2px;">{{getProperty()}}</a>
+        <a v-if='getProperty()!=""' target="_blank" :href="'https://www.wikidata.org/wiki/Property:'+getProperty()" class="dropdown-item wikidata" style="padding: 2px;">{{getProperty()}} on Wikidata</a>
     </div>
 </div>
 </template>
