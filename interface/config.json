@@ -13,7 +13,8 @@
 	    "matched_on" : "P13" ,
 	    "action_log" : "P15",
 	    "action_type" : "P16",
-	    "catalog_url" : "P14"
+	    "catalog_url" : "P14",
+	    "wd_meta_item" : "P17"
 	} ,
 	"items":{
 		"catalog" : "Q2" 
