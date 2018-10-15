@@ -55,6 +55,19 @@ if ( $command == 'auto' ) {
 	$mnm->syncCatalogWithWikidata ( $s->catalog_q ) ;
 	$mnm->addAutoMatches ( $s->catalog_q ) ;
 
+} else if ( $command == 'add_meta' ) {
+/*
+	$j = $mnm->getSPARQL ( "SELECT ?q { ?q wdt:P3 wd:Q16620 MINUS { ?q wdt:{$mnm->config->props->wd_meta_item} [] } }" ) ;
+	foreach ( $j->results->bindings AS $b ) {
+		$q = preg_replace ( '|^.+/|' , '' , $b->q->value ) ;
+		$data = [ 'claims' => [] ] ;
+		$data['claims'][] = $mnm->getNewClaimString($mnm->config->props->wd_meta_item,'Q33999') ;
+		$data['claims'][0]['qualifiers'] = [
+			$mnm->getNewSnakString ( $mnm->config->props->wd_prop , "P106" ) ,
+		] ;
+		$result = $mnm->doEditEntity ( $q , $data , "Adding P106:Q33999 metadata" ) ;
+	}
+*/
 } else {
 
 	die ( "Unknown command '{$command}'\n" ) ;
