@@ -27,11 +27,22 @@ if ( $command == 'auto' ) {
 
 	$mnm->syncCatalogWithWikidata ( getParamQ() ) ;
 
+} else if ( $command == 'create_catalog' ) {
+
+# TODO check params
+	$params = [] ;
+	$params['label'] = $argv[2] ;
+	$params['url'] = $argv[3] ;
+	if ( isset($argv[4]) ) $params['wd_prop'] = $argv[4] ;
+
+	$s = new Scraper () ;
+	$q = $s->getorCreateCatalogItem ( $params ) ;
+	if ( !isset($q) ) die ( "Could not get a catalog ID for ".json_encode($p)."\n") ;
+	print "{$q}\n" ;
+
 } else if ( $command == 'scrape' ) {
 
 	$s = new Scraper ( getParamQ() ) ;
-//	$q = $s->getorCreateCatalogItem ( $p ) ;
-//	if ( !isset($q) ) die ( "Could not get a catalog ID for ".json_encode($p)."\n") ;
 	$s->ensureDirectoryStructureForCatalog () ;
 	$s->updateURLs () ;
 	$s->cachePages () ;
@@ -46,10 +57,6 @@ if ( $command == 'auto' ) {
 	die ( "Unknown command '{$command}'\n" ) ;
 
 }
-
-#$data = [ 'claims' => [ $mnm->getNewClaimItem('P3','Q10') ] ] ;
-#$result = $mnm->doEditEntity ( 'Q10' , $data , 'TESTING' ) ;
-#print "{$result->success}\n" ;
 
 
 ?>

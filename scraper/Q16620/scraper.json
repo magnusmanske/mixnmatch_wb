@@ -1,0 +1,21 @@
+{
+	"levels":[
+		{
+			"type":"range",
+			"start":"0",
+			"end":"600",
+			"step":"1"
+		}
+	] ,
+	"url_pattern":"https://forest.nationaltheatret.no/Persons/page/$L1",
+	"parse":{
+		"simple_space":1,
+		"rx_entry":"<a class=\"productionTitle\" href=\"/Persons/Details/(.+?)\">\\s*(.+?)</a>" ,
+		"resolve":{
+			"id":{"base":"$1"},
+			"label":{"base":"$2"},
+			"url":{"base":"https://forest.nationaltheatret.no/Persons/Details/$1"},
+			"type":{"base":"Q5"}
+		}
+	}
+}

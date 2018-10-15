@@ -3,6 +3,7 @@
 require_once ( 'interface/mixnmatch.php' ) ;
 
 class Scraper {
+	public $testing = false ;
 	public $mnm ;
 	public $base_path = './scraper' ;
 	public $db ; # SQLite3 database handle
@@ -113,6 +114,7 @@ class Scraper {
 				$v = $params['ids'][$level_num] ;
 				$url = str_replace ( $k , $v , $url ) ;
 			}
+			if ( $this->testing ) { print "{$url} | ".json_encode($params)."\n" ; return; }
 			$this->exec ( "INSERT OR IGNORE INTO page_cache (url,params,is_downloaded,is_processed) VALUES ('".$this->db->escapeString($url)."','".$this->db->escapeString(json_encode($params))."',0,0)" ) ;
 			return ;
 		}
@@ -122,6 +124,11 @@ class Scraper {
 		if ( $l->type == 'keys' ) {
 			foreach ( $l->keys AS $k ) {
 				$params['ids'][$level] = $k ;
+				$this->constructURLs ( $j , $params , $level+1 ) ;
+			}
+		} else if ( $l->type == 'range' ) {
+			for ( $pos = $l->start*1 ; $pos <= $l->end*1 ; $pos += $l->step*1 ) {
+				$params['ids'][$level] = $pos ;
 				$this->constructURLs ( $j , $params , $level+1 ) ;
 			}
 		} else {
@@ -146,6 +153,7 @@ class Scraper {
 
 	# Reads all pages into the sqlite3 cache, where necessary
 	public function cachePages () {
+		if ( $this->testing ) return ;
 		$this->openOrCreateDatabase() ;
 		$sql = "SELECT * FROM page_cache WHERE is_downloaded=0" ;
 		$results = $this->db->query ( $sql ) ;
@@ -194,11 +202,12 @@ class Scraper {
 	}
 
 	private function fixVariableHTML ( $s ) {
-		$s = preg_replace ( '/<.*?>/' , '' , $s ) ;
+		$s = preg_replace ( '/<.*?>/' , '' , $s ) ; // Remove HTML tags
+		$s = html_entity_decode ( $s ) ; // Replace HTML entities
 		$s = preg_replace ( '/&nbsp;/' , ' ' , $s ) ; // Spaces fix
 		$s = preg_replace ( '/&#0*39;/' , '\'' , $s ) ; // Quote
 		$s = preg_replace ( '/&amp;/' , '&' , $s ) ; // &
-		$s = preg_replace ( '/\s+/' , ' ' , $s ) ;
+		$s = preg_replace ( '/\s+/' , ' ' , $s ) ; // Collapse spaces
 		return trim($s) ;
 	}
 
@@ -254,11 +263,12 @@ class Scraper {
 			$res = $this->resolveParsing ( $params , $config , $res ) ;
 			if ( !isset($res) or !isset($res['id']) or !isset($res['label']) or $res['id']=='' or $res['label']=='' ) continue ;
 			if ( function_exists('catalogSpecificParser') ) catalogSpecificParser ( $config , $block , $res ) ;
+			if ( $this->testing ) { print_r ( $res ) ; continue ; }
 			$this->createOrUpdateItem ( $res ) ;
 		}
 
 		// Mark page cache as processed
-		$this->exec ( "UPDATE page_cache SET is_processed=1 WHERE id={$row['id']}" ) ;
+		if ( !$this->testing ) $this->exec ( "UPDATE page_cache SET is_processed=1 WHERE id={$row['id']}" ) ;
 	}
 
 	private function createOrUpdateItem ( $item , $do_update = false ) {
