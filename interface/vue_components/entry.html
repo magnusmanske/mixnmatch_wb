@@ -160,15 +160,17 @@ div.entry_col12 {
 			<div class='entry_col3' v-else tt='log_into_widar'></div>
 		</div>
 		<div v-else-if='hasAutoMatch()' style='border-top:1px solid #BBB'>
-			<div class='entry_row entry_row_auto' v-for='match in getAutoMatches()'>
+			<div class='entry_row entry_row_auto' v-for='claim in getAutoMatchClaims()'>
 				<div class='entry_col1'>
-					<div><wd-link :wd='wdwd' :item='match' smallq='true'></wd-link></div>
+					<div><wd-link :wd='wdwd' :item='claim.mainsnak.datavalue.value' smallq='true'></wd-link></div>
 				</div>
 				<div class='entry_col2'>
-					<div>{{getWDitem(match).getDesc()}}</div>
+					<div>{{getWDitem(claim.mainsnak.datavalue.value).getDesc()}}</div>
 				</div>
 				<div class='entry_col3' v-if='isLoggedIn()'>
-					<a href='#' class='set_user_q' @click.prevent='onSetQFromAuto(match)' tt='set_q'></a>
+					<a href='#' class='set_user_q' @click.prevent='onSetQFromAuto(claim.mainsnak.datavalue.value)' tt='set_q'></a>
+					|
+					<a href='#' class='remove_user_q' @click.prevent='setWorking();onRemoveClaim(claim,forceUpdate)' tt='remove_auto_match'></a>
 				</div>
 				<div class='entry_col3' v-else tt='log_into_widar'></div>
 			</div>
@@ -238,6 +240,9 @@ Vue.component ( 'entry' , {
     	getAutoMatches : function () {
     		let ret = this.i.getStringsForProperty(_props.auto) ;
     		return ret.filter((v, i, a) => a.indexOf(v) === i) ; // Unique
+    	} ,
+    	getAutoMatchClaims : function () {
+    		return this.i.getClaimsForProperty(_props.auto) ;
     	} ,
     	getWDitem : function ( q ) { return wdwd.getItem(q) } ,
     	onSetUserQ : function () {

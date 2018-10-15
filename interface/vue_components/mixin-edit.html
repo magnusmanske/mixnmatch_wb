@@ -66,6 +66,19 @@ var editMixin = {
 			me.reloadItem ( q , callback ) ;
 		} ,
 
+		// Removes a specific claim (used to remove auto-matches)
+    	onRemoveClaim : function ( claim , callback ) {
+			let me = this ;
+			let q = claim.id.replace(/\$.*$/,'').toUpperCase() ;
+			Promise.all ( [
+				new Promise(function(resolve, reject) { // Edit in Mix'n'match
+					let data = { claims:[{id:claim.id,remove:''}] } ;
+					me.editEntity ( q , data , resolve ) ;
+				} )
+		    ] ) .then ( () => { me.reloadItem ( q , callback ) } ) ;
+    	} ,
+
+
 		// Removes all NA tags from a Mix'n'match entry item
 		onRemoveNA : function ( q , callback ) {
 			let me = this ;
