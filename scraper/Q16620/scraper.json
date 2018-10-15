@@ -10,7 +10,7 @@
 	"url_pattern":"https://forest.nationaltheatret.no/Persons/page/$L1",
 	"parse":{
 		"simple_space":1,
-		"rx_entry":"<a class=\"productionTitle\" href=\"/Persons/Details/(.+?)\">\\s*(.+?)</a>" ,
+		"rx_entry":"<a class=\"productionTitle\" href=\"/Persons/Details/(.+?)\">(.+?)</a>" ,
 		"resolve":{
 			"id":{"base":"$1"},
 			"label":{"base":"$2"},

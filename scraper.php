@@ -197,7 +197,7 @@ class Scraper {
 		if ( !is_array($regexes) ) $regexes = [ $regexes ] ;
 		foreach ( $regexes AS $r ) {
 			$r = $this->escapeScraperRegexp ( $r ) ;
-			if ( preg_match ( $r , $block , $ret ) ) return $ret ;
+			if ( preg_match_all ( $r , $block , $ret , PREG_SET_ORDER ) > 0 ) return $ret ;
 		}
 	}
 
@@ -258,13 +258,15 @@ class Scraper {
 		} else $blocks[] = $contents ;
 
 		foreach ( $blocks AS $block ) {
-			$res = $this->parseBlock ( $config , $block ) ;
-			if ( !isset($res) ) continue ;
-			$res = $this->resolveParsing ( $params , $config , $res ) ;
-			if ( !isset($res) or !isset($res['id']) or !isset($res['label']) or $res['id']=='' or $res['label']=='' ) continue ;
-			if ( function_exists('catalogSpecificParser') ) catalogSpecificParser ( $config , $block , $res ) ;
-			if ( $this->testing ) { print_r ( $res ) ; continue ; }
-			$this->createOrUpdateItem ( $res ) ;
+			$results = $this->parseBlock ( $config , $block ) ;
+			if ( !isset($results) ) continue ;
+			foreach ( $results AS $res ) {
+				$res = $this->resolveParsing ( $params , $config , $res ) ;
+				if ( !isset($res) or !isset($res['id']) or !isset($res['label']) or $res['id']=='' or $res['label']=='' ) continue ;
+				if ( function_exists('catalogSpecificParser') ) catalogSpecificParser ( $config , $block , $res ) ;
+				if ( $this->testing ) { print_r ( $res ) ; continue ; }
+				$this->createOrUpdateItem ( $res ) ;
+			}
 		}
 
 		// Mark page cache as processed

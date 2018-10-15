@@ -46,8 +46,11 @@ if ( $command == 'auto' ) {
 	$s->ensureDirectoryStructureForCatalog () ;
 	$s->updateURLs () ;
 	$s->cachePages () ;
+
+	# Include catalog-specific parser, if any
 	$p = $s->getCatalogSpecificIncludePath() ;
 	if ( file_exists($p) ) include_once ( $p ) ;
+
 	$s->processPages () ;
 	$mnm->syncCatalogWithWikidata ( $s->catalog_q ) ;
 	$mnm->addAutoMatches ( $s->catalog_q ) ;
