@@ -52,6 +52,11 @@ class MixnMatch {
 		return $this->getSPARQL ( $sparql , $this->wd_sparql_api ) ;
 	}
 
+	public function getCurrentTimestamp () {
+		$s = '+' . substr ( date('c') , 0 , 10 ) . 'T00:00:00Z' ;
+		return $s ;
+	}
+
 	public function syncCatalogWithWikidata ( $catalog ) { # INCOMPLETE
 		# Get from MnM: ext=>Mnm, ext=>WD
 		$j = $this->loadCatalogMappingFromMnM ( $catalog ) ;
@@ -74,15 +79,16 @@ class MixnMatch {
 		foreach ( $ext2wd AS $ext_id => $wdq ) {
 			if ( !isset($ext2mnm[$ext_id]) ) { # Not in MnM
 				# TODO
-				print "No MnM for {$ext_id}\n" ;
+#				print "No MnM for {$ext_id}\n" ;
 				continue ;
 			}
 			if ( !isset($ext2mnm_wdq[$ext_id]) ) { # Not in MnM => WD
-
-				$qs = $ext2mnm[$ext_id] . "\t{$this->config->props->manual}\t\"{$wdq}\"" ;
-				$qs .= "\t{$this->config->props->by_user}\t\"|Wikidata importer\"" ;
-				$qs .= "\t{$this->config->props->matched_on}\t+2018-10-10T00:00:00Z/11" ; # TODO current date
-				$qs_mnm[] = $qs ;
+				$data = [ 'claims' => [ $this->getNewClaimString ( $this->config->props->manual , $wdq ) ] ] ;
+				$data['claims'][0]['qualifiers'] = [
+					$this->getNewSnakString ( $this->config->props->by_user , "Mix'n'match Wikidata importer" ) ,
+					$this->getNewSnakDate ( $this->config->props->matched_on , $this->getCurrentTimestamp() , 11 )
+				] ;
+				$result = $this->doEditEntity ( $ext2mnm[$ext_id] , $data , "Automatically setting match based on Wikidata" ) ;
 				continue ;
 			}
 			if ( $ext2mnm_wdq[$ext_id] != $wdq ) { # Mismatch
@@ -91,7 +97,7 @@ class MixnMatch {
 		#	print "Already in MnM: {$ext_id} => {$wdq}\n" ;
 		}
 
-		print implode ( "\n" , $qs_mnm ) ;
+#		print implode ( "\n" , $qs_mnm ) ;
 	}
 
 	public function searchWikidata ( $query , $max_results = 50 ) {
@@ -278,7 +284,7 @@ class MixnMatch {
 	}
 
 	public function getNewSnakDate ( $prop , $time , $precision = 9 ) {
-		return $this->getNewSnakFromDatavalue ( $prop , [ 'type'=>'time' , 'value'=>['time'=>$time,'precision'=>$precision,'calendarmodel'=>'http://www.wikidata.org/entity/Q1985727'] ] ) ;
+		return $this->getNewSnakFromDatavalue ( $prop , [ 'type'=>'time' , 'value'=>['time'=>$time,'precision'=>$precision,'timezone'=>0,'before'=>0,'after'=>0,'calendarmodel'=>'http://www.wikidata.org/entity/Q1985727'] ] ) ;
 	}
 
 	public function getNewSnakString ( $prop , $string ) {
