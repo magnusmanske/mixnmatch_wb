@@ -166,58 +166,69 @@ class MixnMatch {
 		foreach ( $sparql_results->results->bindings AS $b ) {
 			$this->autoLimitWikibaseCache() ;
 			$q = preg_replace ( '/^.+\//' , '' , $b->q->value ) ;
-			$label = $b->qLabel->value ;
-			$label = $this->getWikidataSearchString ( $label ) ;
+            $matches = $this->getLabelMatches( $b->qLabel->value , $stringent_typing ) ;
 
-			$search_results = $this->searchWikidata ( $label , $stringent_typing?50:10 ) ;
-			if ( count($search_results) == 0 ) continue ;
+            if ( count($matches) == 0 ) continue ;
 
-			$to_load = [] ;
-			foreach ( $search_results AS $result ) $to_load[] = $result->title ;
-			$this->wil_wd->loadItems ( $to_load ) ;
+            $data = [ 'claims' => [] ] ;
+            foreach ( $matches as $target_q => $item ) {
+                $data['claims'][] = $this->getNewClaimString($this->config->props->auto,$target_q) ;
+            }
 
-			# For stringent typing:
-			# If the entry has one or more types, get all the type subclasses from Wikidata
-			$stringent_subclasses = [] ;
-			if ( $stringent_typing and isset($b->types) ) {
-				$types = explode ( '|' , $b->types->value ) ;
-				foreach ( $types AS $type ) {
-					$stringent_subclasses = array_merge ( $stringent_subclasses , $this->getSubclassList ( $type ) ) ;
-				}
-				$stringent_subclasses = array_unique ( $stringent_subclasses ) ;
-			}
+            $result = $this->doEditEntity ( $q , $data , 'Auto-matching' ) ;
+        }
+    }
 
-			# Check all search results
-			$had_that_target_q = [] ;
-			$data = [ 'claims' => [] ] ;
-			foreach ( $search_results AS $result ) {
-				$target_q = $result->title ;
-				if ( isset($had_that_target_q[$target_q]) ) continue ;
-				$had_that_target_q[$target_q] = true ;
+	public function getLabelMatches ( $label , $stringent_typing = true ) {
+        $label = $this->getWikidataSearchString ( $label ) ;
 
-				$i = $this->wil_wd->getItem ( $target_q ) ;
-				if ( !isset($i) ) continue ; # Item didn't load from Wikidata
+        $search_results = $this->searchWikidata ( $label , $stringent_typing?50:10 ) ;
+        if ( count($search_results) == 0 ) return [];
 
-				$claim_instances = [] ;
-				foreach ( $i->getClaims('P31') as $claim ) $claim_instances[] = $i->getTarget ( $claim ) ;
+        $to_load = [] ;
+        foreach ( $search_results AS $result ) $to_load[] = $result->title ;
+        $this->wil_wd->loadItems ( $to_load ) ;
 
-				# Check for stringent type:
-				# Check if the search result is an instance of one of these subclass items
-				# But only if we have entry types AND at least one P31 (if not, icnlude it anyway, apparently noone has worked on the item...)
-				if ( $stringent_typing and isset($b->types) and count($claim_instances) > 0 ) {
-					if ( count ( array_intersect ( $stringent_subclasses , $claim_instances ) ) == 0 ) continue ; # Skip this result if not a _good_ P31
-				}
+        # For stringent typing:
+        # If the entry has one or more types, get all the type subclasses from Wikidata
+        $stringent_subclasses = [] ;
+        if ( $stringent_typing and isset($b->types) ) {
+            $types = explode ( '|' , $b->types->value ) ;
+            foreach ( $types AS $type ) {
+                $stringent_subclasses = array_merge ( $stringent_subclasses , $this->getSubclassList ( $type ) ) ;
+            }
+            $stringent_subclasses = array_unique ( $stringent_subclasses ) ;
+        }
 
-				# Check for bad instance_of
-				if ( count ( array_intersect ( $this->bad_instance_of , $claim_instances ) ) > 0 ) continue ; # Skin this result if _bad_ P31
+        # Check all search results
+        $had_that_target_q = [] ;
+        $matched_items = [] ;
+        foreach ( $search_results AS $result ) {
+            $target_q = $result->title ;
+            if ( isset($had_that_target_q[$target_q]) ) continue ;
+            $had_that_target_q[$target_q] = true ;
 
-				$data['claims'][] = $this->getNewClaimString($this->config->props->auto,$target_q) ;
-				if ( count($data['claims']) >= 10 ) break ; # Don't add more than 10 candidates
-			}
+            $i = $this->wil_wd->getItem ( $target_q ) ;
+            if ( !isset($i) ) continue ; # Item didn't load from Wikidata
 
-			if ( count($data['claims']) == 0 ) continue ;
-			$result = $this->doEditEntity ( $q , $data , 'Auto-matching' ) ;
-		}
+            $claim_instances = [] ;
+            foreach ( $i->getClaims('P31') as $claim ) $claim_instances[] = $i->getTarget ( $claim ) ;
+
+            # Check for stringent type:
+            # Check if the search result is an instance of one of these subclass items
+            # But only if we have entry types AND at least one P31 (if not, icnlude it anyway, apparently noone has worked on the item...)
+            if ( $stringent_typing and isset($b->types) and count($claim_instances) > 0 ) {
+                if ( count ( array_intersect ( $stringent_subclasses , $claim_instances ) ) == 0 ) continue ; # Skip this result if not a _good_ P31
+            }
+
+            # Check for bad instance_of
+            if ( count ( array_intersect ( $this->bad_instance_of , $claim_instances ) ) > 0 ) continue ; # Skip this result if _bad_ P31
+
+            $matched_items[$target_q] = $i;
+            if ( count($matched_items) >= 10 ) break ; # Don't add more than 10 candidates
+        }
+
+        return $matched_items;
 	}
 
 
@@ -298,4 +309,3 @@ class MixnMatch {
 	
 } ;
 
-?>
