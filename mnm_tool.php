@@ -68,11 +68,42 @@ if ( $command == 'auto' ) {
 		$result = $mnm->doEditEntity ( $q , $data , "Adding P106:Q33999 metadata" ) ;
 	}
 */
+} else if ( $command == 'lookup' ) {
+
+	if ( !isset($argv[2]) ) die ( "Missing label to look up for matching\n" ) ;
+    $label = implode ( " " , array_slice ($argv,2) );
+
+    # TODO: filter by type if requested
+	$items = $mnm->getLabelMatches( $label, false ) ;
+	foreach ( $items as $item ) {
+        $item = $item->j ;
+        $label = getPreferredString( $item->labels ) ;
+        $description = getPreferredString( $item->descriptions ) ;
+
+        echo "$label ({$item->id})";
+        echo $description ? ": {$description}\n" : "\n";
+	}
+
 } else {
 
 	die ( "Unknown command '{$command}'\n" ) ;
 
 }
 
+function getPreferredString( $array ) {
+    global $wikidata_preferred_langs;
+
+    foreach ( $wikidata_preferred_langs as $language ) {
+        if ( isset($array->$language) ) {
+            return $array->$language->value ;
+        }
+    }
+
+    foreach ( $array as $element ) {
+        return $element->value ;
+    }
+
+    return '' ;
+}
 
 ?>
